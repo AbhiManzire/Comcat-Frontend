@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import axios from 'axios';
+import { inquiryAPI } from '../services/api';
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -12,6 +12,10 @@ import {
 } from '@heroicons/react/24/outline';
 
 const ComponentManager = ({ inquiryId, onComponentsChange }) => {
+  console.log('=== COMPONENT MANAGER INITIALIZED ===');
+  console.log('inquiryId:', inquiryId);
+  console.log('onComponentsChange:', onComponentsChange);
+  
   const [editingId, setEditingId] = useState(null);
   const [editingValues, setEditingValues] = useState({}); // Store individual editing values
   const [newComponent, setNewComponent] = useState({
@@ -34,13 +38,9 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
     ['components', inquiryId],
     async () => {
       if (!inquiryId) return [];
-      const token = localStorage.getItem('token');
       
-      const response = await axios.get(`/api/inquiry/${inquiryId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      console.log('🔍 ComponentManager - Fetching inquiry:', inquiryId);
+      const response = await inquiryAPI.getInquiryAdmin(inquiryId);
       
       console.log('🔍 ComponentManager - Full inquiry response:', response.data);
       console.log('🔍 ComponentManager - Inquiry data:', response.data.inquiry);
@@ -65,28 +65,35 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
   // Update inquiry mutation
   const updateInquiryMutation = useMutation(
     async (updatedParts) => {
-      const token = localStorage.getItem('token');
-      const response = await axios.put(`/api/inquiry/${inquiryId}`, {
+      console.log('🔍 ComponentManager - Updating inquiry with parts:', updatedParts);
+      console.log('🔍 ComponentManager - Using admin API for update');
+      const response = await inquiryAPI.updateInquiryAdmin(inquiryId, {
         parts: updatedParts
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
       });
       return response.data;
     },
     {
-      onSuccess: () => {
+      onSuccess: (data) => {
+        console.log('🔍 ComponentManager - Update successful:', data);
         queryClient.invalidateQueries(['components', inquiryId]);
         if (onComponentsChange) {
           onComponentsChange();
         }
+      },
+      onError: (error) => {
+        console.error('🔍 ComponentManager - Update error:', error);
+        console.error('🔍 ComponentManager - Error details:', error.response?.data);
+        alert('Error updating inquiry. Please try again.');
       }
     }
   );
 
   // Add new component
   const addComponent = () => {
+    console.log('=== ADDING NEW COMPONENT ===');
+    console.log('newComponent:', newComponent);
+    console.log('current components:', components);
+    
     if (!newComponent.partRef || !newComponent.material || !newComponent.thickness) {
       alert('Please fill in all required fields');
       return;
@@ -98,7 +105,11 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
       modified: new Date()
     };
 
+    console.log('componentToAdd:', componentToAdd);
     const updatedComponents = [...components, componentToAdd];
+    console.log('updatedComponents:', updatedComponents);
+    
+    console.log('Calling updateInquiryMutation.mutate...');
     updateInquiryMutation.mutate(updatedComponents);
 
     // Reset form
@@ -111,6 +122,8 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
       remarks: '',
       price: 0
     });
+    
+    console.log('Form reset completed');
   };
 
   // Start editing
@@ -237,11 +250,8 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
     });
 
     try {
-      const response = await axios.post(`/api/inquiry/${inquiryId}/upload`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      console.log('🔍 ComponentManager - Uploading files:', formData);
+      const response = await inquiryAPI.uploadFiles(inquiryId, formData);
 
       if (response.data.success) {
         // Refresh components to show new data
@@ -257,9 +267,8 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
   // Download Excel template
   const downloadExcelTemplate = async () => {
     try {
-      const response = await axios.get('/api/inquiry/excel-template', {
-        responseType: 'blob'
-      });
+      console.log('🔍 ComponentManager - Downloading Excel template');
+      const response = await inquiryAPI.downloadExcelTemplate();
       
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');

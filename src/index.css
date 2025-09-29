@@ -190,6 +190,32 @@
   background: var(--komacut-600);
 }
 
+/* Custom Scrollbar for Table - Smaller and Lighter */
+.table-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f9fafb;
+}
+
+.table-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.table-scrollbar::-webkit-scrollbar-track {
+  background: #f9fafb;
+  border-radius: 2px;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+  transition: background 0.2s ease;
+}
+
+.table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
 /* Smooth Scrolling */
 html {
   scroll-behavior: smooth;

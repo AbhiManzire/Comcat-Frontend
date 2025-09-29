@@ -106,47 +106,11 @@ const QuotationResponse = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">K</span>
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">KOMACUT</h1>
-                  <p className="text-xs text-gray-500">SHEET METAL PARTS ON DEMAND</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center space-x-6">
-              <Link to="/" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">Home</Link>
-              <Link to="/about" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">About</Link>
-              <Link to="/services" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">Services</Link>
-              <Link to="/contact" className="text-gray-600 hover:text-gray-900 text-sm font-medium transition-colors">Contact</Link>
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="text-sm">
-                  <p className="text-gray-900 font-medium">admin admin</p>
-                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">Admin</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Quotation Response</h1>
-          <p className="text-lg text-gray-600">Review and respond to your quotation</p>
+          {/* <p className="text-lg text-gray-600">Review and respond to your quotation</p> */}
         </div>
 
         {/* Quotation Details Card */}
@@ -231,24 +195,24 @@ const QuotationResponse = () => {
         </div>
 
         {/* Terms & Conditions */}
-        <div className="bg-white rounded-xl shadow-lg mb-8 overflow-hidden">
-          <div className="px-6 py-6 border-b border-gray-200 bg-gray-50">
-            <h3 className="text-xl font-bold text-gray-900">Terms & Conditions</h3>
+        <div className="bg-white rounded-xl shadow-lg mb-4 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h3 className="text-lg font-bold text-gray-900">Terms & Conditions</h3>
           </div>
-          <div className="px-6 py-6">
-            <p className="text-gray-700 leading-relaxed">{quotation.terms || 'Standard manufacturing terms apply. Payment required before production begins.'}</p>
+          <div className="px-6 py-4">
+            <p className="text-gray-700 leading-relaxed text-sm">{quotation.terms || 'Standard manufacturing terms apply. Payment required before production begins.'}</p>
           </div>
         </div>
 
         {/* Additional Notes */}
         {quotation.notes && (
-          <div className="bg-white rounded-xl shadow-lg mb-8 overflow-hidden">
-            <div className="px-6 py-6 border-b border-gray-200 bg-gray-50">
-              <h3 className="text-xl font-bold text-gray-900">Additional Notes</h3>
+          <div className="bg-white rounded-xl shadow-lg mb-4 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <h3 className="text-lg font-bold text-gray-900">Additional Notes</h3>
             </div>
-            <div className="px-6 py-6">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-                <p className="text-gray-700 leading-relaxed">{quotation.notes}</p>
+            <div className="px-6 py-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-gray-700 leading-relaxed text-sm">{quotation.notes}</p>
               </div>
             </div>
           </div>
@@ -256,17 +220,17 @@ const QuotationResponse = () => {
 
         {/* Action Buttons */}
         {quotation.status === 'sent' && (
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-            <div className="text-center mb-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Ready to proceed?</h3>
-              <p className="text-gray-600">Choose your response to this quotation</p>
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Ready to proceed?</h3>
+              <p className="text-gray-600 text-sm">Choose your response to this quotation</p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 onClick={handleAccept}
                 disabled={actionLoading}
-                className="flex-1 sm:flex-none px-8 py-4 bg-green-600 text-white text-lg font-semibold rounded-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center shadow-lg transform hover:scale-105 transition-all duration-200"
+                className="flex-1 sm:flex-none px-6 py-3 bg-green-600 text-white text-base font-semibold rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center shadow-md transform hover:scale-105 transition-all duration-200"
               >
                 {actionLoading ? (
                   <div className="flex items-center">
@@ -275,7 +239,7 @@ const QuotationResponse = () => {
                   </div>
                 ) : (
                   <>
-                    <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     Accept Quotation & Create Order
@@ -286,7 +250,7 @@ const QuotationResponse = () => {
               <button
                 onClick={handleReject}
                 disabled={actionLoading}
-                className="flex-1 sm:flex-none px-8 py-4 bg-red-600 text-white text-lg font-semibold rounded-xl hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center shadow-lg transform hover:scale-105 transition-all duration-200"
+                className="flex-1 sm:flex-none px-6 py-3 bg-red-600 text-white text-base font-semibold rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center shadow-md transform hover:scale-105 transition-all duration-200"
               >
                 {actionLoading ? (
                   <div className="flex items-center">
@@ -295,7 +259,7 @@ const QuotationResponse = () => {
                   </div>
                 ) : (
                   <>
-                    <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                     Reject Quotation

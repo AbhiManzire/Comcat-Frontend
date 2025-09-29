@@ -16,7 +16,8 @@ api.interceptors.request.use(
     console.log('API Request:', {
       url: config.url,
       method: config.method,
-      token: token ? 'Present' : 'Missing'
+      token: token ? `Present (${token.substring(0, 20)}...)` : 'Missing',
+      fullToken: token
     });
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -132,6 +133,21 @@ export const inquiryAPI = {
   // Update inquiry
   updateInquiry: (id, data) => api.put(`/inquiry/${id}`, data),
   
+  // Update inquiry (admin)
+  updateInquiryAdmin: (id, data) => api.put(`/inquiry/admin/${id}`, data),
+  
+  // Upload files to inquiry
+  uploadFiles: (id, formData) => api.post(`/inquiry/${id}/upload`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }),
+  
+  // Download Excel template
+  downloadExcelTemplate: () => api.get('/inquiry/excel-template', {
+    responseType: 'blob'
+  }),
+  
   // Delete inquiry
   deleteInquiry: (id) => api.delete(`/inquiry/${id}`),
   
@@ -142,7 +158,7 @@ export const inquiryAPI = {
 // Quotation API
 export const quotationAPI = {
   // Get all quotations for the current user
-  getQuotations: (params = {}) => api.get('/quotation', { params }),
+  getQuotations: (params = {}) => api.get('/quotation/customer', { params }),
   
   // Get single quotation by ID
   getQuotation: (id) => api.get(`/quotation/${id}`),
@@ -171,7 +187,7 @@ export const quotationAPI = {
 // Order API
 export const orderAPI = {
   // Get all orders for current user
-  getOrders: (params = {}) => api.get('/orders', { params }),
+  getOrders: (params = {}) => api.get('/orders/customer', { params }),
   
   // Get customer orders
   getCustomerOrders: (customerId) => api.get(`/orders/customer/${customerId}`),
@@ -291,10 +307,10 @@ export const notificationAPI = {
   getNotifications: (params = {}) => api.get('/notifications', { params }),
   
   // Mark notification as read
-  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAsRead: (id) => api.patch(`/notifications/${id}/read`),
   
   // Mark all as read
-  markAllAsRead: () => api.put('/notifications/read-all'),
+  markAllAsRead: () => api.patch('/notifications/read-all'),
   
   // Delete notification
   deleteNotification: (id) => api.delete(`/notifications/${id}`),

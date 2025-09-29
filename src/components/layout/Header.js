@@ -49,10 +49,10 @@ const Header = () => {
             {/* User Icon and Login Button */}
             <div className="flex items-center space-x-4">
               {/* User Icon on Left */}
-              <div className="flex items-center space-x-2">
+              {/* <div className="flex items-center space-x-2">
                 <UserIcon className="h-6 w-6 text-gray-600" />
                 <span className="text-sm text-gray-700">User</span>
-              </div>
+              </div> */}
               
               {/* Login Button on Right */}
               <Link

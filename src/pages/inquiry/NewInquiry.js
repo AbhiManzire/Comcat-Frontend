@@ -47,13 +47,20 @@ const NewInquiry = () => {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const files = Array.from(e.dataTransfer.files);
+      console.log('Files dropped:', files);
+      
       const validFiles = files.filter(file => {
         const extension = file.name.split('.').pop().toLowerCase();
-        return ['dwg', 'dxf', 'zip', 'pdf'].includes(extension);
+        return ['dwg', 'dxf', 'zip', 'pdf', 'xlsx', 'xls'].includes(extension);
       });
       
       if (validFiles.length !== files.length) {
-        toast.error('Only DWG, DXF, ZIP, and PDF files are allowed');
+        toast.error('Only DWG, DXF, ZIP, PDF, XLSX, and XLS files are allowed');
+      }
+      
+      if (validFiles.length === 0) {
+        toast.error('No valid files dropped');
+        return;
       }
       
       // Process ALL files for the table
@@ -63,7 +70,8 @@ const NewInquiry = () => {
         partRef: file.name,
         material: 'Zintec',
         thickness: '1.5',
-        grade: '',
+        grade: 'Grade A',
+        remark: 'No remarks',
         quantity: 1,
         createdAt: new Date().toISOString(),
         file: file,
@@ -75,6 +83,7 @@ const NewInquiry = () => {
         console.log('Files dropped:', processedFiles);
         console.log('Previous files:', prev);
         console.log('New total files:', newFiles.length);
+        toast.success(`${validFiles.length} file(s) uploaded successfully`);
         return newFiles;
       });
     }
@@ -82,13 +91,20 @@ const NewInquiry = () => {
 
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
+    console.log('Files selected:', files);
+    
     const validFiles = files.filter(file => {
       const extension = file.name.split('.').pop().toLowerCase();
-      return ['dwg', 'dxf', 'zip', 'pdf'].includes(extension);
+      return ['dwg', 'dxf', 'zip', 'pdf', 'xlsx', 'xls'].includes(extension);
     });
     
     if (validFiles.length !== files.length) {
-      toast.error('Only DWG, DXF, ZIP, and PDF files are allowed');
+      toast.error('Only DWG, DXF, ZIP, PDF, XLSX, and XLS files are allowed');
+    }
+    
+    if (validFiles.length === 0) {
+      toast.error('No valid files selected');
+      return;
     }
     
     // Process ALL files for the table (not just PDFs)
@@ -111,6 +127,7 @@ const NewInquiry = () => {
       console.log('Files uploaded:', processedFiles);
       console.log('Previous files:', prev);
       console.log('New total files:', newFiles.length);
+      toast.success(`${validFiles.length} file(s) uploaded successfully`);
       return newFiles;
     });
   };
@@ -140,6 +157,10 @@ const NewInquiry = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    console.log('Submit button clicked');
+    console.log('PDF Files:', pdfFiles);
+    console.log('Form Data:', formData);
     
     if (pdfFiles.length === 0) {
       toast.error('Please upload at least one file');
@@ -183,7 +204,7 @@ const NewInquiry = () => {
             </div>
             
             <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center space-x-1 mr-20 gap-4">
                 <Link 
                   to="/inquiry/new" 
                   className="px-3 py-1 bg-red-600 text-white rounded-md text-xs font-medium hover:bg-red-700 transition-colors duration-200"
@@ -239,158 +260,110 @@ const NewInquiry = () => {
         </div>
       </div>
 
-      <div className="py-2 ">
-        <div className="flex gap-3">
+      <div className="py-4">
+        <div className="flex gap-4">
           {/* Left Sidebar */}
-          <div className="w-64 bg-white rounded-lg shadow p-2">
-            <button className="w-full bg-green-600 text-white px-4 py-3 rounded-lg font-medium mb-1">
+          <div className="w-72 bg-white rounded-xl shadow-lg border border-gray-100 p-4 sticky top-4">
+            {/* New Inquiry Button */}
+            <button className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-4 py-3 rounded-xl font-semibold mb-4 shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200">
               New Inquiry
             </button>
             
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">SHOP HARDWARE</span>
-                <span className="text-gray-400">▼</span>
+            {/* Shop Hardware Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+                <span className="text-sm font-semibold text-gray-800">SHOP HARDWARE</span>
+                <span className="text-gray-500 text-xs">▼</span>
               </div>
               
-              <div className="space-y-2">
+              {/* Navigation Links */}
+              <div className="space-y-1">
                 <Link 
                   to="/inquiries" 
-                  className="flex items-center space-x-3 text-sm text-gray-600 hover:text-green-600 hover:bg-green-50 px-2 py-1 rounded transition-colors duration-200"
+                  className="flex items-center space-x-3 text-sm text-gray-700 hover:text-green-700 hover:bg-green-50 px-3 py-2.5 rounded-lg transition-all duration-200 hover:shadow-sm border border-transparent hover:border-green-200"
                 >
-                  <span>⚠️</span>
-                  <span>RFQs</span>
+                  <span className="text-lg">⚠️</span>
+                  <span className="font-medium">RFQs</span>
                 </Link>
                 <Link 
                   to="/orders" 
-                  className="flex items-center space-x-3 text-sm text-gray-600 hover:text-green-600 hover:bg-green-50 px-2 py-1 rounded transition-colors duration-200"
+                  className="flex items-center space-x-3 text-sm text-gray-700 hover:text-green-700 hover:bg-green-50 px-3 py-2.5 rounded-lg transition-all duration-200 hover:shadow-sm border border-transparent hover:border-green-200"
                 >
-                  <span>📦</span>
-                  <span>My Orders</span>
+                  <span className="text-lg">📦</span>
+                  <span className="font-medium">My Orders</span>
                 </Link>
                 <Link 
                   to="/parts" 
-                  className="flex items-center space-x-3 text-sm text-gray-600 hover:text-green-600 hover:bg-green-50 px-2 py-1 rounded transition-colors duration-200"
+                  className="flex items-center space-x-3 text-sm text-gray-700 hover:text-green-700 hover:bg-green-50 px-3 py-2.5 rounded-lg transition-all duration-200 hover:shadow-sm border border-transparent6hover:border-green-200"
                 >
-                  <span>🔧</span>
-                  <span>My Parts</span>
+                  <span className="text-lg">🔧</span>
+                  <span className="font-medium">My Parts</span>
                 </Link>
                 <Link 
                   to="/tools" 
-                  className="flex items-center space-x-3 text-sm text-gray-600 hover:text-green-600 hover:bg-green-50 px-2 py-1 rounded transition-colors duration-200"
+                  className="flex items-center space-x-3 text-sm text-gray-700 hover:text-green-700 hover:bg-green-50 px-3 py-2.5 rounded-lg transition-all duration-200 hover:shadow-sm border border-transparent hover:border-green-200"
                 >
-                  <span>⚙️</span>
-                  <span>Engineering Tools</span>
+                  <span className="text-lg">⚙️</span>
+                  <span className="font-medium">Engineering Tools</span>
                 </Link>
               </div>
             </div>
           </div>
 
           {/* Main Content */}
-          <div className="flex-1">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-              {/* Left Column - File Upload (Wider) */}
-              <div className="lg:col-span-2 bg-white rounded-lg shadow p-2">
+          <div className="flex-1 p-4 sm:p-6 lg:p-8 pr-6 sm:pr-8 lg:pr-10 xl:pr-16 max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-1 gap-3 mr-6 sm:mr-8 lg:mr-10 xl:mr-16">
+              {/* File Upload Section - Full Width */}
+              <div className="bg-white rounded-lg shadow p-2">
                 <div className="bg-green-50 border-2 border-dashed border-green-300 rounded-lg p-8 text-center min-h-[300px] flex flex-col justify-center">
                   <div
-                    className={`relative flex flex-col items-center justify-center h-full ${dragActive ? 'bg-green-100' : ''}`}
+                    className={`flex flex-col items-center justify-center h-full ${dragActive ? 'bg-green-100' : ''}`}
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
                     onDragOver={handleDrag}
                     onDrop={handleDrop}
                   >
-                    <input
-                      type="file"
-                      multiple
-                      accept=".dwg,.dxf,.zip,.pdf"
-                      onChange={handleFileUpload}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
                     <div className="text-6xl mb-1 text-green-400"></div>
                     <p className="text-xl font-medium text-gray-700 mb-1">
                       Drag files to upload or
                     </p>
-                    <button
-                      type="button"
-                      className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-medium hover:bg-green-700 transition-colors duration-200 shadow-lg"
-                    >
+                    <label className="bg-green-600 text-white px-8 py-3 rounded-lg text-lg font-medium hover:bg-green-700 transition-colors duration-200 shadow-lg cursor-pointer">
                       BROWSE
-                    </button>
+                      <input
+                        type="file"
+                        multiple
+                        accept=".dwg,.dxf,.zip,.pdf,.xlsx,.xls"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </label>
                     <p className="text-sm text-gray-500 mt-4">
-                      Allowed extensions: dwg, dxf, zip, pdf
+                      Allowed extensions: dwg, dxf, zip, pdf, xlsx, xls
                     </p>
                   </div>
                 </div>
                 
-
-                {/* Files Table - Show when files are uploaded */}
-                {pdfFiles.length > 0 && (
-                  <PDFFileTable 
-                    files={pdfFiles}
-                    onUpdateFile={handleUpdatePdfFile}
-                    onDeleteFile={handleDeletePdfFile}
-                  />
-                )}
-
-                {/* User Information Display - Always show */}
-                <UserInfoDisplay />
-                
-              </div>
-
-              {/* Right Column - Information Panels */}
-              <div className="lg:col-span-1 space-y-3">
-                {/* Available Manufacturing Processes */}
-                <div className="bg-white rounded-lg shadow p-2">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-1 flex items-center">
-                    <span className="mr-2">ℹ️</span>
-                    Available Manufacturing Processes
-                  </h3>
-                  <div className="space-y-1">
-                    {[
-                      'Laser Cutting',
-                      'CNC Bending',
-                      'CNC Turning',
-                      'Laser Engraving',
-                      'Chamfer',
-                      'Threading',
-                      'Surface Finishing'
-                    ].map((process) => (
-                      <div key={process} className="flex items-center">
-                        <span className="text-green-600 mr-2">✓</span>
-                        <span className="text-sm text-gray-700">{process}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Content Policy */}
-                <div className="bg-white rounded-lg shadow p-2">
-                  <h4 className="text-lg font-semibold text-gray-800 mb-1 flex items-center">
-                    <span className="mr-2">ℹ️</span>
-                    Content Policy Agreement
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-1">
-                    By uploading your file, you agree and acknowledge and ratify the technical drawings are respecting K.
-                  </p>
-                  <div className="space-y-2">
-                    {[
-                      'Illegal, false or offensive parts',
-                      'Weapons or military parts',
-                      'Export controlled parts',
-                      'Intellectual property infringement'
-                    ].map((item) => (
-                      <div key={item} className="flex items-center text-sm text-red-600">
-                        <span className="mr-2">✗</span>
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             </div>
 
+            {/* PDF Files Table - Full Width - Always reserve space */}
+            <div className="mt-4 mr-6 sm:mr-8 lg:mr-10 xl:mr-16">
+              {pdfFiles.length > 0 ? (
+                <PDFFileTable 
+                  files={pdfFiles}
+                  onUpdateFile={handleUpdatePdfFile}
+                  onDeleteFile={handleDeletePdfFile}
+                />
+              ) : null}
+            </div>
+
+            {/* User Information Display - After PDF Files Table */}
+            <div className="mt-4 mr-6 sm:mr-8 lg:mr-10 xl:mr-16">
+              <UserInfoDisplay />
+            </div>
+
             {/* Material and Thickness Input */}
-            <div className="mt-8 bg-white rounded-lg shadow p-3">
+            <div className="mt-8 bg-white rounded-lg shadow p-3 mr-6 sm:mr-8 lg:mr-10 xl:mr-16">
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -418,10 +391,61 @@ const NewInquiry = () => {
                 </div>
               </form>
             </div>
+
+            {/* Information Panels - Moved to bottom after Submit Button */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 mr-6 sm:mr-8 lg:mr-10 xl:mr-16">
+              {/* Available Manufacturing Processes */}
+              <div className="bg-white rounded-lg shadow p-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="mr-2">ℹ️</span>
+                  Available Manufacturing Processes
+                </h3>
+                <div className="space-y-2">
+                  {[
+                    'Laser Cutting',
+                    'CNC Bending',
+                    'CNC Turning',
+                    'Laser Engraving',
+                    'Chamfer',
+                    'Threading',
+                    'Surface Finishing'
+                  ].map((process) => (
+                    <div key={process} className="flex items-center">
+                      <span className="text-green-600 mr-2">✓</span>
+                      <span className="text-sm text-gray-700">{process}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Content Policy */}
+              <div className="bg-white rounded-lg shadow p-4">
+                <h4 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+                  <span className="mr-2">ℹ️</span>
+                  Content Policy Agreement
+                </h4>
+                <p className="text-sm text-gray-600 mb-3">
+                  By uploading your file, you agree and acknowledge and ratify the technical drawings are respecting K.
+                </p>
+                <div className="space-y-2">
+                  {[
+                    'Illegal, false or offensive parts',
+                    'Weapons or military parts',
+                    'Export controlled parts',
+                    'Intellectual property infringement'
+                  ].map((item) => (
+                    <div key={item} className="flex items-center text-sm text-red-600">
+                      <span className="mr-2">✗</span>
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    // </div>
+    </div>
   );
 };
 

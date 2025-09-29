@@ -20,97 +20,30 @@ const OrderTracking = () => {
     try {
       setLoading(true);
       console.log('Fetching order tracking for ID:', id);
-      console.log('User ID:', user?._id);
       
-      if (!user?._id) {
-        console.log('No user ID available, using fallback data');
-        const fallbackOrder = {
-          _id: id,
-          orderNumber: 'ORD250912641',
-          status: 'pending',
-          createdAt: new Date().toISOString(),
-          expectedDelivery: null,
-          tracking: generateTimeline({ status: 'pending' })
-        };
-        setOrder(fallbackOrder);
-        return;
-      }
-      
-      // Use customer orders API to get all orders, then find the specific one
-      const response = await orderAPI.getCustomerOrders(user._id);
-      console.log('Customer Orders API response:', response);
+      // Use the proper order API endpoint
+      const response = await orderAPI.getOrder(id);
+      console.log('Order API response:', response);
       
       if (response.data.success) {
-        const orders = response.data.orders;
-        console.log('Found orders:', orders);
+        console.log('Found order:', response.data.order);
         
-        // Find the specific order by ID or order number
-        const orderData = orders.find(order => 
-          order._id === id || 
-          order.id === id || 
-          order.orderNumber === id
-        );
+        // Generate timeline based on actual order status
+        const timeline = generateTimeline(response.data.order);
         
-        if (orderData) {
-          console.log('Found specific order:', orderData);
-          
-          // Generate timeline based on actual order status
-          const timeline = generateTimeline(orderData);
-          
-          const orderWithTracking = {
-            ...orderData,
-            tracking: timeline
-          };
-          console.log('Setting order with tracking:', orderWithTracking);
-          console.log('Order ID for back button:', orderWithTracking._id || orderWithTracking.id);
-          setOrder(orderWithTracking);
-        } else {
-          console.log('Order not found in customer orders, using fallback data');
-          const fallbackOrder = {
-            _id: id,
-            orderNumber: 'ORD250912641',
-            status: 'pending',
-            createdAt: new Date().toISOString(),
-            expectedDelivery: null,
-            tracking: generateTimeline({ status: 'pending' })
-          };
-          console.log('Setting fallback order:', fallbackOrder);
-          console.log('Fallback Order ID for back button:', fallbackOrder._id || fallbackOrder.id);
-          setOrder(fallbackOrder);
-          toast.error('Order not found - showing sample data');
-        }
-      } else {
-        console.log('Failed to fetch customer orders, using fallback data');
-        const fallbackOrder = {
-          _id: id,
-          orderNumber: 'ORD250912641',
-          status: 'pending',
-          createdAt: new Date().toISOString(),
-          expectedDelivery: null,
-          tracking: generateTimeline({ status: 'pending' })
+        const orderWithTracking = {
+          ...response.data.order,
+          tracking: timeline
         };
-        console.log('Setting fallback order:', fallbackOrder);
-        console.log('Fallback Order ID for back button:', fallbackOrder._id || fallbackOrder.id);
-        setOrder(fallbackOrder);
-        toast.error('Failed to fetch orders - showing sample data');
+        console.log('Setting order with tracking:', orderWithTracking);
+        setOrder(orderWithTracking);
+      } else {
+        console.log('Order not found:', response.data.message);
+        toast.error('Order not found');
       }
     } catch (error) {
       console.error('Error fetching order:', error);
-      console.log('Using fallback data');
-      
-      // Fallback to mock data
-      const errorFallbackOrder = {
-        _id: id,
-        orderNumber: 'ORD250912641',
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        expectedDelivery: null,
-        tracking: generateTimeline({ status: 'pending' })
-      };
-      console.log('Setting error fallback order:', errorFallbackOrder);
-      console.log('Error Fallback Order ID for back button:', errorFallbackOrder._id || errorFallbackOrder.id);
-      setOrder(errorFallbackOrder);
-      toast.error('Failed to fetch order - showing sample data');
+      toast.error('Failed to fetch order details');
     } finally {
       setLoading(false);
     }

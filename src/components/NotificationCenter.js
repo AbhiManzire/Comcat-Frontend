@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from 'react-query';
-import axios from 'axios';
+import { notificationAPI } from '../services/api';
 import { 
   BellIcon, 
   XMarkIcon,
@@ -18,12 +18,7 @@ const NotificationCenter = () => {
     'notifications',
     async () => {
       try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get('http://localhost:5000/api/notifications', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const response = await notificationAPI.getNotifications();
         return response.data.notifications || [];
       } catch (error) {
         console.error('Failed to fetch notifications:', error);
@@ -70,19 +65,22 @@ const NotificationCenter = () => {
 
   const markAsRead = async (notificationId) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:5000/api/notifications/${notificationId}/read`, {}, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      console.log('=== MARKING NOTIFICATION AS READ ===');
+      console.log('Notification ID:', notificationId);
+      
+      const response = await notificationAPI.markAsRead(notificationId);
+      console.log('Mark as read response:', response);
+      
       setNotifications(prev => 
         prev.map(n => 
           n._id === notificationId ? { ...n, read: true } : n
         )
       );
+      
+      console.log('Notification marked as read successfully');
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
+      console.error('Error details:', error.response?.data);
     }
   };
 
@@ -159,12 +157,7 @@ const NotificationCenter = () => {
                 onClick={async () => {
                   // Mark all as read
                   try {
-                    const token = localStorage.getItem('token');
-                    await axios.patch('http://localhost:5000/api/notifications/read-all', {}, {
-                      headers: {
-                        'Authorization': `Bearer ${token}`
-                      }
-                    });
+                    await notificationAPI.markAllAsRead();
                     setNotifications(prev => 
                       prev.map(n => ({ ...n, read: true }))
                     );

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { quotationAPI, inquiryAPI, orderAPI } from '../services/api';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   
@@ -12,7 +12,10 @@ const Dashboard = () => {
   useEffect(() => {
     console.log('Dashboard - User data:', user);
     console.log('Dashboard - User role:', user?.role);
-    if (user?.role === 'admin' || user?.role === 'backoffice' || user?.role === 'subadmin') {
+    console.log('Dashboard - User loading state:', loading);
+    
+    // Only redirect if user data is loaded and user is admin/backoffice
+    if (user && (user.role === 'admin' || user.role === 'backoffice' || user.role === 'subadmin')) {
       console.log('Redirecting admin user to /admin/dashboard');
       navigate('/admin/dashboard', { replace: true });
     }
@@ -217,9 +220,38 @@ const Dashboard = () => {
     { id: 'analytics', name: 'Analytics', icon: '📈' }
   ];
 
+  // Show loading state while user data is being fetched
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if user is not loaded
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Please log in to access your dashboard</h2>
+          <Link 
+            to="/login" 
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          >
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-2 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto ">
         <div className="px-4 py-2 sm:px-0">
           {/* Welcome Section */}
           <div className="mb-4">
@@ -234,31 +266,33 @@ const Dashboard = () => {
             </p>
           </div>
 
-          {/* Tabs Navigation */}
-          <div className="mb-6 bg-white rounded-lg shadow-lg border-2 border-gray-200">
-            <div className="px-6 py-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Dashboard Navigation</h3>
-              <nav className="flex flex-wrap gap-2">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-4 py-3 rounded-lg font-medium text-sm flex items-center space-x-2 transition-all duration-200 ${
-                      activeTab === tab.id
-                        ? 'bg-blue-500 text-white shadow-md transform scale-105'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
-                    }`}
-                  >
-                    <span className="text-lg">{tab.icon}</span>
-                    <span>{tab.name}</span>
-                  </button>
-                ))}
-              </nav>
+          {/* Tabs Navigation - Only show for customer users */}
+          {user && user.role === 'customer' && (
+            <div className="mb-6 bg-white rounded-lg shadow-lg border-2 border-gray-200">
+              <div className="px-6 py-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Dashboard Navigation</h3>
+                <nav className="flex flex-wrap gap-2">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`px-4 py-3 rounded-lg font-medium text-sm flex items-center space-x-2 transition-all duration-200 ${
+                        activeTab === tab.id
+                          ? 'bg-blue-500 text-white shadow-md transform scale-105'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
+                      }`}
+                    >
+                      <span className="text-lg">{tab.icon}</span>
+                      <span>{tab.name}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Tab Content */}
-          {activeTab === 'overview' && (
+          {/* Tab Content - Only show for customer users */}
+          {user && user.role === 'customer' && activeTab === 'overview' && (
             <>
               {/* Stats Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
@@ -358,18 +392,21 @@ const Dashboard = () => {
                 </div>
                 <div className="p-3">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Link
-                      to="/inquiry/new"
-                      className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-4">
-                        <span className="text-green-600 text-lg">📄</span>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">Submit New Inquiry</h4>
-                        <p className="text-sm text-gray-500">Submit a new manufacturing inquiry</p>
-                      </div>
-                    </Link>
+                    {/* Only show for customer users */}
+                    {user?.role === 'customer' && (
+                      <Link
+                        to="/inquiry/new"
+                        className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-4">
+                          <span className="text-green-600 text-lg">📄</span>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">Submit New Inquiry</h4>
+                          <p className="text-sm text-gray-500">Submit a new manufacturing inquiry</p>
+                        </div>
+                      </Link>
+                    )}
 
                     <Link
                       to="/inquiries"
@@ -496,7 +533,7 @@ const Dashboard = () => {
           )}
 
           {/* Quotations Tab Content */}
-          {activeTab === 'quotations' && (
+          {user && user.role === 'customer' && activeTab === 'quotations' && (
             <div className="space-y-6">
               <div className="bg-white shadow rounded-lg">
                 <div className="px-6 py-4 border-b border-gray-200">
@@ -581,7 +618,7 @@ const Dashboard = () => {
           )}
 
           {/* Inquiries Tab Content */}
-          {activeTab === 'inquiries' && (
+          {user && user.role === 'customer' && activeTab === 'inquiries' && (
             <div className="space-y-6">
               <div className="bg-white shadow rounded-lg">
                 <div className="px-6 py-4 border-b border-gray-200">
@@ -657,7 +694,7 @@ const Dashboard = () => {
           )}
 
           {/* Orders Tab Content */}
-          {activeTab === 'orders' && (
+          {user && user.role === 'customer' && activeTab === 'orders' && (
             <div className="space-y-6">
               <div className="bg-white shadow rounded-lg">
                 <div className="px-6 py-4 border-b border-gray-200">
@@ -750,7 +787,7 @@ const Dashboard = () => {
           )}
 
           {/* Analytics Tab Content */}
-          {activeTab === 'analytics' && (
+          {user && user.role === 'customer' && activeTab === 'analytics' && (
             <div className="space-y-6">
               <div className="bg-white shadow rounded-lg">
                 <div className="px-6 py-4 border-b border-gray-200">
@@ -784,6 +821,25 @@ const Dashboard = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Fallback content for non-customer users */}
+          {user && user.role !== 'customer' && (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🏢</div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                Welcome to your {user.role} dashboard
+              </h2>
+              <p className="text-gray-600 mb-6">
+                You have been redirected to the appropriate dashboard for your role.
+              </p>
+              <Link 
+                to="/admin/dashboard" 
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              >
+                Go to Admin Dashboard
+              </Link>
             </div>
           )}
         </div>

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Components
 import Header from './components/layout/Header';
@@ -78,10 +79,11 @@ const Layout = ({ children, isInternal = false }) => {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router>
-          <div className="App">
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <Router>
+            <div className="App">
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={
@@ -177,7 +179,11 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="/quotation/:id/response" element={
-              <QuotationResponse />
+              <ProtectedRoute>
+                <Layout isInternal>
+                  <QuotationResponse />
+                </Layout>
+              </ProtectedRoute>
             } />
             <Route path="/quotation/:id/payment" element={
               <ProtectedRoute>
@@ -264,10 +270,11 @@ function App() {
             } />
           </Routes>
           <Toaster position="top-right" />
-          </div>
-        </Router>
-      </AuthProvider>
-    </QueryClientProvider>
+            </div>
+          </Router>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

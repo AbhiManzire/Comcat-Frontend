@@ -13,11 +13,19 @@ const BackOfficeDashboard = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('inquiries');
   const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [pendingInquiries, setPendingInquiries] = useState([]);
   const [quotations, setQuotations] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState({
+    inquiries: 0,
+    quotations: 0,
+    orders: 0,
+    completed: 0
+  });
   const [showQuotationForm, setShowQuotationForm] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState(null);
+  const [lastFetchTime, setLastFetchTime] = useState(null);
 
   useEffect(() => {
     if (user) {
@@ -25,14 +33,39 @@ const BackOfficeDashboard = () => {
     }
   }, [user]);
 
-  const fetchData = async () => {
+  const fetchData = async (forceRefresh = false) => {
     try {
-      setLoading(true);
+      // Check if we need to refresh data (cache for 30 seconds)
+      const now = Date.now();
+      const shouldRefresh = forceRefresh || !lastFetchTime || (now - lastFetchTime) > 30000;
       
-      // Fetch inquiries
-      const inquiryResponse = await inquiryAPI.getAllInquiries();
-      if (inquiryResponse.data.success) {
-        const transformedInquiries = inquiryResponse.data.inquiries.map(inquiry => ({
+      if (!shouldRefresh) {
+        return; // Use cached data
+      }
+
+      setLoading(true);
+      setStatsLoading(true);
+      
+      // Fetch dashboard stats first (fast)
+      const statsPromise = adminAPI.getDashboardStats();
+      
+      // Fetch all data in parallel for better performance
+      const [statsResponse, inquiryResponse, quotationResponse, orderResponse] = await Promise.allSettled([
+        statsPromise,
+        inquiryAPI.getAllInquiries(),
+        quotationAPI.getAllQuotations(),
+        user && ['admin', 'backoffice'].includes(user.role) ? adminAPI.getAllOrders() : Promise.resolve({ data: { success: false } })
+      ]);
+
+      // Handle dashboard stats
+      if (statsResponse.status === 'fulfilled' && statsResponse.value.data.success) {
+        setDashboardStats(statsResponse.value.data.stats);
+      }
+      setStatsLoading(false);
+
+      // Handle inquiries
+      if (inquiryResponse.status === 'fulfilled' && inquiryResponse.value.data.success) {
+        const transformedInquiries = inquiryResponse.value.data.inquiries.map(inquiry => ({
           id: inquiry.inquiryNumber,
           customer: `${inquiry.customer?.firstName || ''} ${inquiry.customer?.lastName || ''}`.trim() || 'N/A',
           company: inquiry.customer?.companyName || 'N/A',
@@ -53,10 +86,9 @@ const BackOfficeDashboard = () => {
         setPendingInquiries(transformedInquiries);
       }
 
-      // Fetch quotations
-      const quotationResponse = await quotationAPI.getAllQuotations();
-      if (quotationResponse.data.success) {
-        const transformedQuotations = quotationResponse.data.quotations.map(quotation => ({
+      // Handle quotations
+      if (quotationResponse.status === 'fulfilled' && quotationResponse.value.data.success) {
+        const transformedQuotations = quotationResponse.value.data.quotations.map(quotation => ({
           id: quotation.quotationNumber,
           inquiryId: quotation.inquiry?.inquiryNumber || 'N/A',
           customer: `${quotation.inquiry?.customer?.firstName || ''} ${quotation.inquiry?.customer?.lastName || ''}`.trim() || 'N/A',
@@ -73,46 +105,26 @@ const BackOfficeDashboard = () => {
         setQuotations(transformedQuotations);
       }
 
-      // Fetch orders using admin API
-      try {
-        console.log('Fetching orders using adminAPI.getAllOrders()...');
-        console.log('Current user:', user);
-        console.log('Current user token:', localStorage.getItem('token'));
-        console.log('User role:', user?.role);
-        
-        if (!user || !['admin', 'backoffice'].includes(user.role)) {
-          console.log('User not authorized to fetch orders');
-          setOrders([]);
-          return;
-        }
-        
-        const orderResponse = await adminAPI.getAllOrders();
-        console.log('Order response received:', orderResponse);
-        if (orderResponse.data.success) {
-          const transformedOrders = orderResponse.data.orders.map(order => ({
-            id: order.orderNumber,
-            orderId: order.orderNumber,
-            customer: `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim() || 'N/A',
-            items: order.parts?.length || 0,
-            status: order.status,
-            amount: order.totalAmount,
-            date: new Date(order.createdAt).toLocaleDateString('en-US', {
-              month: 'numeric',
-              day: 'numeric',
-              year: 'numeric'
-            }),
-            _id: order._id
-          }));
-          setOrders(transformedOrders);
-        } else {
-          console.log('Orders API returned error:', orderResponse.data.message);
-          setOrders([]);
-        }
-      } catch (orderError) {
+      // Handle orders
+      if (orderResponse.status === 'fulfilled' && orderResponse.value.data.success) {
+        const transformedOrders = orderResponse.value.data.orders.map(order => ({
+          id: order.orderNumber,
+          orderId: order.orderNumber,
+          customer: `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim() || 'N/A',
+          items: order.parts?.length || 0,
+          status: order.status,
+          amount: order.totalAmount,
+          date: new Date(order.createdAt).toLocaleDateString('en-US', {
+            month: 'numeric',
+            day: 'numeric',
+            year: 'numeric'
+          }),
+          _id: order._id
+        }));
+        setOrders(transformedOrders);
+      } else if (orderResponse.status === 'rejected') {
+        const orderError = orderResponse.reason;
         console.error('Error fetching orders:', orderError);
-        console.error('Order error details:', orderError.response?.data);
-        console.error('Order error status:', orderError.response?.status);
-        console.error('Order error headers:', orderError.response?.headers);
         
         if (orderError.response?.status === 401) {
           toast.error('Authentication failed. Please login again.');
@@ -126,11 +138,13 @@ const BackOfficeDashboard = () => {
         
         setOrders([]);
       }
+
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to fetch dashboard data');
     } finally {
       setLoading(false);
+      setLastFetchTime(Date.now());
     }
   };
 
@@ -141,8 +155,8 @@ const BackOfficeDashboard = () => {
 
   const handleQuotationSuccess = (quotation) => {
     toast.success(`Quotation ${quotation.quotationNumber} created successfully!`);
-    // Refresh the inquiries list
-    fetchData();
+    // Refresh the inquiries list with force refresh
+    fetchData(true);
   };
 
   const handleCloseQuotationForm = () => {
@@ -156,8 +170,8 @@ const BackOfficeDashboard = () => {
       
       if (response.data.success) {
         toast.success('Quotation sent to customer successfully!');
-        // Refresh the quotations list
-        fetchData();
+        // Refresh the quotations list with force refresh
+        fetchData(true);
       } else {
         toast.error(response.data.message || 'Failed to send quotation');
       }
@@ -196,16 +210,103 @@ const BackOfficeDashboard = () => {
       <div className="max-w-7xl mx-auto py-2 sm:px-6 lg:px-8">
         <div className="px-4 py-2 sm:px-0">
           {/* Header */}
-          <div className="mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">Back Office Dashboard</h1>
-            <p className="mt-1 text-gray-600 text-sm">Manage inquiries, quotations, and orders</p>
+          <div className="mb-4 flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Back Office Dashboard</h1>
+              <p className="mt-1 text-gray-600 text-sm">Manage inquiries, quotations, and orders</p>
+            </div>
+            <button
+              onClick={() => fetchData(true)}
+              disabled={loading}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
+          </div>
+
+          {/* Dashboard Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <div className="bg-white rounded-lg shadow-lg border-2 border-gray-200 p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <span className="text-blue-600 text-lg">📄</span>
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Inquiries</p>
+                  {statsLoading ? (
+                    <div className="animate-pulse bg-gray-200 h-6 w-12 rounded mt-1"></div>
+                  ) : (
+                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.inquiries}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-lg border-2 border-gray-200 p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <span className="text-yellow-600 text-lg">🏷️</span>
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Quotations</p>
+                  {statsLoading ? (
+                    <div className="animate-pulse bg-gray-200 h-6 w-12 rounded mt-1"></div>
+                  ) : (
+                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.quotations}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-lg border-2 border-gray-200 p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <span className="text-green-600 text-lg">📦</span>
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Active Orders</p>
+                  {statsLoading ? (
+                    <div className="animate-pulse bg-gray-200 h-6 w-12 rounded mt-1"></div>
+                  ) : (
+                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.orders}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-lg border-2 border-gray-200 p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <span className="text-purple-600 text-lg">✅</span>
+                  </div>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Completed</p>
+                  {statsLoading ? (
+                    <div className="animate-pulse bg-gray-200 h-6 w-12 rounded mt-1"></div>
+                  ) : (
+                    <p className="text-2xl font-bold text-gray-900">{dashboardStats.completed}</p>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Navigation Tabs */}
           <div className="mb-6 bg-white rounded-lg shadow-lg border-2 border-gray-200">
             <div className="px-6 py-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Admin Dashboard Navigation</h3>
-              <nav className="flex flex-wrap gap-2">
+              <nav className="flex flex-wrap gap-8">
                 <button
                   onClick={() => setActiveTab('inquiries')}
                   className={`px-4 py-3 rounded-lg font-medium text-sm flex items-center space-x-2 transition-all duration-200 ${
@@ -286,8 +387,11 @@ const BackOfficeDashboard = () => {
                         CUSTOMER
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        PARTS
+                        TECHNICAL SPECIFICATIONS
                       </th>
+                      {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        FILES
+                      </th> */}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         STATUS
                       </th>
@@ -304,17 +408,47 @@ const BackOfficeDashboard = () => {
                       <tr key={inquiry.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{inquiry.id}</div>
-                          <div className="text-sm text-gray-500">{inquiry.files} files</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{inquiry.customer}</div>
                           <div className="text-sm text-gray-500">{inquiry.company}</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {inquiry.parts?.length || 0} parts
+                        <td className="px-6 py-4">
+                          <div className="max-w-xs">
+                            {inquiry.parts && inquiry.parts.length > 0 ? (
+                              <div className="text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded">
+                                <div className="font-medium">{inquiry.parts[0].material}</div>
+                                <div className="text-gray-500">{inquiry.parts[0].thickness} • Qty: {inquiry.parts[0].quantity}</div>
+                                {inquiry.parts[0].remarks && (
+                                  <div className="text-gray-400 truncate">{inquiry.parts[0].remarks}</div>
+                                )}
+                                {inquiry.parts.length > 1 && (
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    +{inquiry.parts.length - 1} more parts
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-500">No specifications</div>
+                            )}
+                          </div>
                         </td>
+                        {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div className="flex items-center">
+                            <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            {inquiry.files} files
+                          </div>
+                        </td> */}
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            inquiry.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            inquiry.status === 'quoted' ? 'bg-green-100 text-green-800' :
+                            inquiry.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            inquiry.status === 'accepted' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
                             {inquiry.status}
                           </span>
                         </td>

@@ -9,6 +9,13 @@ const BackOfficeMaterialManagement = () => {
   const [editData, setEditData] = useState({});
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newMaterial, setNewMaterial] = useState({
+    material: '',
+    thickness: '',
+    grade: '',
+    status: 'Active'
+  });
   const { user } = useAuth();
 
   // Generate realistic material data for admin dashboard
@@ -25,7 +32,6 @@ const BackOfficeMaterialManagement = () => {
         material: 'Zintec',
         thickness: '1.5',
         grade: 'S275',
-        pricePerKg: 85.50,
         status: 'Active',
         created: lastWeek.toLocaleDateString('en-US'),
         modified: yesterday.toLocaleDateString('en-US'),
@@ -36,7 +42,6 @@ const BackOfficeMaterialManagement = () => {
         material: 'Mild Steel',
         thickness: '2.0',
         grade: 'IS2062',
-        pricePerKg: 78.25,
         status: 'Active',
         created: lastWeek.toLocaleDateString('en-US'),
         modified: today.toLocaleDateString('en-US'),
@@ -47,7 +52,6 @@ const BackOfficeMaterialManagement = () => {
         material: 'Stainless Steel',
         thickness: '1.0',
         grade: '304',
-        pricePerKg: 125.75,
         status: 'Active',
         created: yesterday.toLocaleDateString('en-US'),
         modified: yesterday.toLocaleDateString('en-US'),
@@ -58,7 +62,6 @@ const BackOfficeMaterialManagement = () => {
         material: 'Aluminum',
         thickness: '2.5',
         grade: '6061-T6',
-        pricePerKg: 95.30,
         status: 'Active',
         created: lastWeek.toLocaleDateString('en-US'),
         modified: lastWeek.toLocaleDateString('en-US'),
@@ -69,7 +72,6 @@ const BackOfficeMaterialManagement = () => {
         material: 'Galvanized Steel',
         thickness: '3.0',
         grade: 'G250',
-        pricePerKg: 82.40,
         status: 'Active',
         created: today.toLocaleDateString('en-US'),
         modified: today.toLocaleDateString('en-US'),
@@ -80,7 +82,6 @@ const BackOfficeMaterialManagement = () => {
         material: 'Carbon Steel',
         thickness: '1.2',
         grade: 'A36',
-        pricePerKg: 72.15,
         status: 'Inactive',
         created: lastWeek.toLocaleDateString('en-US'),
         modified: lastWeek.toLocaleDateString('en-US'),
@@ -96,9 +97,19 @@ const BackOfficeMaterialManagement = () => {
   const loadMaterialData = async () => {
     try {
       console.log('Loading material data...');
-      const materialData = generateMaterialData();
-      setMaterialData(materialData);
-      toast.success('Material data loaded successfully');
+      
+      // Check if data exists in localStorage
+      const savedData = localStorage.getItem('materialData');
+      if (savedData) {
+        console.log('Loading saved material data from localStorage');
+        setMaterialData(JSON.parse(savedData));
+      } else {
+        console.log('No saved data found, generating default material data');
+        const materialData = generateMaterialData();
+        setMaterialData(materialData);
+        // Save to localStorage for persistence
+        localStorage.setItem('materialData', JSON.stringify(materialData));
+      }
     } catch (error) {
       console.error('Error loading material data:', error);
       toast.error('Failed to load material data');
@@ -135,31 +146,41 @@ const BackOfficeMaterialManagement = () => {
     setEditingRow(row.id);
     setEditData({
       material: row.material,
-      thickness: row.thickness
+      thickness: row.thickness,
+      grade: row.grade,
+      pricePerKg: row.pricePerKg,
+      status: row.status
     });
   };
 
   const handleSave = async (id) => {
     setLoading(true);
     try {
-      console.log('Updating material data locally - API endpoint not implemented yet');
+      console.log('Updating material data and saving to localStorage');
       
-      setMaterialData(prevData => 
-        prevData.map(item => 
-          item.id === id 
-            ? { 
-                ...item, 
-                material: editData.material, 
-                thickness: editData.thickness,
-                modified: new Date().toLocaleDateString('en-US'),
-                isEditing: false
-              }
-            : item
-        )
+      const updatedData = materialData.map(item => 
+        item.id === id 
+          ? { 
+              ...item, 
+              material: editData.material, 
+              thickness: editData.thickness,
+              grade: editData.grade,
+              pricePerKg: parseFloat(editData.pricePerKg),
+              status: editData.status,
+              modified: new Date().toLocaleDateString('en-US'),
+              isEditing: false
+            }
+          : item
       );
+      
+      setMaterialData(updatedData);
+      
+      // Save to localStorage for persistence
+      localStorage.setItem('materialData', JSON.stringify(updatedData));
+      
       setEditingRow(null);
       setEditData({});
-      toast.success('Changes saved successfully (local update)');
+      toast.success('Changes saved successfully');
     } catch (error) {
       console.error('Error saving material data:', error);
       toast.error('Failed to save changes');
@@ -182,16 +203,81 @@ const BackOfficeMaterialManagement = () => {
 
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this item?')) {
-      setMaterialData(prevData => prevData.filter(item => item.id !== id));
+      const updatedData = materialData.filter(item => item.id !== id);
+      setMaterialData(updatedData);
+      
+      // Save to localStorage for persistence
+      localStorage.setItem('materialData', JSON.stringify(updatedData));
+      
       toast.success('Item deleted successfully');
     }
+  };
+
+  const handleAddNew = () => {
+    setShowAddModal(true);
+    setNewMaterial({
+      material: '',
+      thickness: '',
+      grade: '',
+      status: 'Active'
+    });
+  };
+
+  const handleAddMaterial = () => {
+    if (!newMaterial.material || !newMaterial.thickness || !newMaterial.grade) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    const newId = Math.max(...materialData.map(item => item.id), 0) + 1;
+    const today = new Date();
+    
+    const materialToAdd = {
+      id: newId,
+      material: newMaterial.material,
+      thickness: newMaterial.thickness,
+      grade: newMaterial.grade,
+      status: newMaterial.status,
+      created: today.toLocaleDateString('en-US'),
+      modified: today.toLocaleDateString('en-US'),
+      isEditing: false
+    };
+
+    const updatedData = [...materialData, materialToAdd];
+    setMaterialData(updatedData);
+    
+    // Save to localStorage for persistence
+    localStorage.setItem('materialData', JSON.stringify(updatedData));
+    
+    setShowAddModal(false);
+    setNewMaterial({
+      material: '',
+      thickness: '',
+      grade: '',
+      status: 'Active'
+    });
+    toast.success('New material added successfully');
+  };
+
+  const handleCancelAdd = () => {
+    setShowAddModal(false);
+    setNewMaterial({
+      material: '',
+      thickness: '',
+      grade: '',
+      status: 'Active'
+    });
   };
 
   const handleSaveAll = async () => {
     setLoading(true);
     try {
-      console.log('Bulk updating material data locally - API endpoint not implemented yet');
-      toast.success('All changes saved successfully (local update)');
+      console.log('Saving all material data to localStorage');
+      
+      // Save current state to localStorage
+      localStorage.setItem('materialData', JSON.stringify(materialData));
+      
+      toast.success('All changes saved successfully');
     } catch (error) {
       console.error('Error saving material data:', error);
       toast.error('Failed to save changes');
@@ -285,8 +371,14 @@ const BackOfficeMaterialManagement = () => {
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium text-gray-900">Material & Thickness Data</h3>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-500">{materialData.length} items</span>
+                <button
+                  onClick={handleAddNew}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  + Add New Material
+                </button>
               </div>
             </div>
           </div>
@@ -308,9 +400,6 @@ const BackOfficeMaterialManagement = () => {
                     Grade
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Price/Kg
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -325,7 +414,19 @@ const BackOfficeMaterialManagement = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         <div className="flex items-center">
                           <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
-                          {item.material}
+                          {editingRow === item.id ? (
+                            <select
+                              value={editData.material}
+                              onChange={(e) => setEditData({...editData, material: e.target.value})}
+                              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              {materialOptions.map(option => (
+                                <option key={option} value={option}>{option}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            item.material
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -346,23 +447,38 @@ const BackOfficeMaterialManagement = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
-                          {item.grade}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <span className="font-semibold text-green-600">
-                          ₹{item.pricePerKg.toFixed(2)}
-                        </span>
+                        {editingRow === item.id ? (
+                          <input
+                            type="text"
+                            value={editData.grade}
+                            onChange={(e) => setEditData({...editData, grade: e.target.value})}
+                            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        ) : (
+                          <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
+                            {item.grade}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          item.status === 'Active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {item.status}
-                        </span>
+                        {editingRow === item.id ? (
+                          <select
+                            value={editData.status}
+                            onChange={(e) => setEditData({...editData, status: e.target.value})}
+                            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                          </select>
+                        ) : (
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            item.status === 'Active' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {item.status}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         {editingRow === item.id ? (
@@ -426,6 +542,93 @@ const BackOfficeMaterialManagement = () => {
           </div>
         </div>
       </div>
+
+      {/* Add New Material Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Add New Material</h3>
+                <button
+                  onClick={handleCancelAdd}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Material *</label>
+                  <input
+                    type="text"
+                    value={newMaterial.material}
+                    onChange={(e) => setNewMaterial({...newMaterial, material: e.target.value})}
+                    placeholder="Enter material name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Thickness *</label>
+                  <select
+                    value={newMaterial.thickness}
+                    onChange={(e) => setNewMaterial({...newMaterial, thickness: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select Thickness</option>
+                    {thicknessOptions.map(option => (
+                      <option key={option} value={option}>{option}mm</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Grade *</label>
+                  <input
+                    type="text"
+                    value={newMaterial.grade}
+                    onChange={(e) => setNewMaterial({...newMaterial, grade: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter grade (e.g., S275, IS2062)"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    value={newMaterial.status}
+                    onChange={(e) => setNewMaterial({...newMaterial, status: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={handleCancelAdd}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddMaterial}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  Add Material
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

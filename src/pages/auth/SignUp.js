@@ -114,7 +114,7 @@ const SignUp = () => {
   return (
     <div className="min-h-screen flex p-5">
       {/* Left Column - Sign Up Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center py-3 px-6 sm:px-8 lg:px-12 xl:px-16 bg-white">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center py-3 px-6 sm:px-8 lg:px-12 xl:px-16 bg-white border-solid border-2 ">
         <div className="mx-auto w-full max-w-md">
           {/* Header */}
           <div className="flex items-center justify-between ">
@@ -149,9 +149,10 @@ const SignUp = () => {
                   id="email"
                   name="email"
                   type="email"
+                  autoComplete="new-email"
                   required
                   className="mt-2 block w-full px-2.5 py-2.5 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 text-base"
-                  placeholder="Email"
+                  placeholder="Enter your email address"
                   value={formData.email}
                   onChange={handleChange}
                 />
@@ -284,8 +285,10 @@ const SignUp = () => {
                     id="password"
                     name="password"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     required
                     className="block w-full px-4 py-3 pr-12 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                    placeholder="Enter your password"
                     value={formData.password}
                     onChange={handleChange}
                   />
@@ -318,8 +321,10 @@ const SignUp = () => {
                     id="confirmPassword"
                     name="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     required
                     className="block w-full px-4 py-3 pr-12 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+                    placeholder="Confirm your password"
                     value={formData.confirmPassword}
                     onChange={handleChange}
                   />
@@ -348,7 +353,7 @@ const SignUp = () => {
               <p className="text-sm text-gray-600">
                 Already have an account?{' '}
                 <Link to="/login" className="font-medium text-green-600 hover:text-green-500">
-                Log in
+                Login
                 </Link>
               </p>
             </div>
@@ -357,17 +362,17 @@ const SignUp = () => {
       </div>
 
       {/* Right Column - Company Information */}
-      <div className="hidden lg:flex lg:w-1/2 bg-green-600 flex-col justify-center px-12 py-16 relative">
+      <div className="hidden lg:flex lg:w-1/2 bg-yellow-100 flex-col justify-center px-12 py-16 relative">
         <div className="max-w-lg">
-          <h2 className="text-3xl font-bold text-white mb-6">
+          <h2 className="text-3xl font-bold text-gray-800 mb-6">
             Delivering Factory Direct Quality Sheet Metal Parts Since 2005
           </h2>
-          <p className="text-green-100 mb-10 text-lg">
+          <p className="text-gray-700 mb-10 text-lg">
             We focus on simplifying and expediting processes without compromising on quality and services
           </p>
 
           <div className="mb-10">
-            <h3 className="text-xl font-semibold text-white mb-6">OUR EXPERTISE</h3>
+            <h3 className="text-xl font-semibold text-gray-800 mb-6">OUR EXPERTISE</h3>
             <div className="grid grid-cols-2 gap-4">
               {[
                 { name: 'Laser Cutting', icon: '⚡' },
@@ -379,8 +384,8 @@ const SignUp = () => {
                 { name: 'Bulk Fasteners', icon: '🔧' },
                 { name: 'CNC Turning', icon: '⚙️' }
               ].map((service) => (
-                <div key={service.name} className="flex items-center text-green-100 text-sm mb-2">
-                  <span className="mr-3 text-white text-lg">{service.icon}</span>
+                <div key={service.name} className="flex items-center text-gray-700 text-sm mb-2">
+                  <span className="mr-3 text-gray-800 text-lg">{service.icon}</span>
                   <span>{service.name}</span>
                 </div>
               ))}
@@ -388,18 +393,18 @@ const SignUp = () => {
           </div>
 
           {/* Testimonial */}
-          <div className="bg-green-700 rounded-lg p-8 mb-8">
+          <div className="bg-yellow-200 rounded-lg p-8 mb-8">
             <div className="flex items-center mb-6">
               <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
                 <span className="text-green-600 font-bold text-lg">JD</span>
               </div>
             </div>
-            <p className="text-green-100 italic mb-6 leading-relaxed text-sm">
+            <p className="text-gray-700 italic mb-6 leading-relaxed text-sm">
               "We have been working with the Komacut platform since its launch and have been very impressed with the quality of the fabrication, the lead times and ease of use of the platform."
             </p>
-            <p className="text-green-200 text-sm font-medium">
+            <p className="text-gray-600 text-sm font-medium">
               Jonathan D.<br />
-              <span className="text-green-300">Head of Product Design, HivelQ / Form Studio</span>
+              <span className="text-gray-500">Head of Product Design, HivelQ / Form Studio</span>
             </p>
           </div>
 

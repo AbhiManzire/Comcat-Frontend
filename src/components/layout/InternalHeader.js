@@ -34,16 +34,13 @@ const InternalHeader = () => {
     if (user.role === 'admin') {
       return [
         { name: 'Admin Dashboard', href: '/admin/dashboard', icon: Cog6ToothIcon },
-        { name: 'Material Management', href: '/admin/material-management', icon: ClipboardDocumentListIcon },
         { name: 'Order Management', href: '/admin/orders', icon: ClipboardDocumentListIcon },
         { name: 'All Inquiries', href: '/inquiries', icon: ClipboardDocumentListIcon },
-        { name: 'Component Manager', href: '/component-manager', icon: ClipboardDocumentListIcon },
         ...baseNavigation
       ];
     } else if (user.role === 'backoffice') {
       return [
         { name: 'Back Office Dashboard', href: '/admin/dashboard', icon: BuildingOfficeIcon },
-        { name: 'Material Management', href: '/admin/material-management', icon: ClipboardDocumentListIcon },
         { name: 'Order Management', href: '/admin/orders', icon: ClipboardDocumentListIcon },
         { name: 'All Inquiries', href: '/inquiries', icon: ClipboardDocumentListIcon },
         ...baseNavigation
@@ -51,7 +48,6 @@ const InternalHeader = () => {
     } else if (user.role === 'subadmin') {
       return [
         { name: 'Sub Admin Dashboard', href: '/admin/dashboard', icon: Cog6ToothIcon },
-        { name: 'Material Management', href: '/admin/material-management', icon: ClipboardDocumentListIcon },
         { name: 'All Inquiries', href: '/inquiries', icon: ClipboardDocumentListIcon },
         ...baseNavigation
       ];

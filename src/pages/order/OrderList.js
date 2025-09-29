@@ -146,7 +146,7 @@ const OrderList = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto  sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto  ">
         <div className="px-4 py-6 sm:px-0">
           {/* Header */}
           <div className="mb-8">
@@ -347,12 +347,21 @@ const OrderList = () => {
           {filteredOrders.length === 0 && (
             <div className="text-center py-12">
               <div className="text-gray-500 text-lg mb-4">No orders found</div>
-              <Link
-                to="/inquiry/new"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                Create your first inquiry
-              </Link>
+              {/* Only show inquiry creation button for customers, not for admin/backoffice users */}
+              {user?.role === 'customer' && (
+                <Link
+                  to="/inquiry/new"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  Create your first inquiry
+                </Link>
+              )}
+              {/* Show different message for admin users */}
+              {user?.role !== 'customer' && (
+                <div className="text-gray-500 text-sm">
+                  No orders found. Orders will appear here once customers place them.
+                </div>
+              )}
             </div>
           )}
         </div>

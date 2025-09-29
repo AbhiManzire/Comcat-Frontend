@@ -28,177 +28,17 @@ const OrderDetail = () => {
   const fetchOrder = async () => {
     try {
       setLoading(true);
-      console.log('Fetching order with ID:', id); // Debug log
+      console.log('Fetching order with ID:', id);
       
-      // Try admin API first (for back office users)
-      try {
-        console.log('Trying admin API...');
-        const response = await adminAPI.getAllOrders();
-        console.log('Admin API response:', response);
-        if (response.data.success) {
-          // Try to find order by both _id and id
-          const order = response.data.orders.find(o => o._id === id || o.id === id);
-          if (order) {
-            console.log('Found order via admin API:', order); // Debug log
-            setOrder(order);
-            return;
-          } else {
-            console.log('Order not found in admin API results. Available orders:', response.data.orders.map(o => ({ id: o._id, orderNumber: o.orderNumber })));
-          }
-        }
-      } catch (adminError) {
-        console.error('Admin API failed:', adminError);
-        console.log('Admin API error details:', adminError.response?.data);
-      }
-      
-      // Try customer orders API if user is available
-      if (user?._id) {
-        try {
-          console.log('Trying customer orders API...');
-          const response = await orderAPI.getCustomerOrders(user._id);
-          console.log('Customer orders API response:', response);
-          
-          if (response.data.success) {
-            const orders = response.data.orders;
-            const foundOrder = orders.find(order => 
-              order._id === id || order.id === id || order.orderNumber === id
-            );
-            
-            if (foundOrder) {
-              console.log('Found order via customer orders API:', foundOrder);
-              setOrder(foundOrder);
-              return;
-            } else {
-              console.log('Order not found in customer orders. Available orders:', orders.map(o => ({ id: o._id, orderNumber: o.orderNumber })));
-            }
-          }
-        } catch (customerError) {
-          console.error('Customer orders API failed:', customerError);
-        }
-      }
-      
-      // Fallback to regular API
-      try {
-        console.log('Trying regular order API...');
+      // Use the proper order API endpoint
       const response = await orderAPI.getOrder(id);
-        console.log('Regular API response:', response);
+      console.log('Order API response:', response);
       
       if (response.data.success) {
-        console.log('Found order via regular API:', response.data.order); // Debug log
+        console.log('Found order:', response.data.order);
         setOrder(response.data.order);
       } else {
-          console.log('Order not found via regular API:', response.data.message);
-          // Try to find in mock data as last resort
-          const mockOrders = [
-            {
-              id: '68c519d8988fbbd8c570359d',
-              _id: '68c519d8988fbbd8c570359d',
-              orderNumber: 'ORD-000001',
-              inquiryNumber: 'INQ-000001',
-              status: 'pending',
-              paymentStatus: 'pending',
-              amount: 1250.00,
-              totalAmount: 1250.00,
-              date: '12/13/2024',
-              customer: {
-                firstName: 'John',
-                lastName: 'Doe',
-                email: 'john.doe@example.com'
-              },
-              parts: [
-                {
-                  partRef: 'Part-001',
-                  material: 'Steel',
-                  quantity: 3,
-                  unitPrice: 416.67,
-                  totalPrice: 1250.00
-                }
-              ],
-              createdAt: new Date().toISOString()
-            },
-            {
-              id: '68c3db52767a97d01b3db1ae',
-              _id: '68c3db52767a97d01b3db1ae',
-              orderNumber: 'ORD-000002',
-              inquiryNumber: 'INQ-000002',
-              status: 'confirmed',
-              paymentStatus: 'completed',
-              amount: 850.00,
-              totalAmount: 850.00,
-              date: '12/12/2024',
-              customer: {
-                firstName: 'Jane',
-                lastName: 'Smith',
-                email: 'jane.smith@example.com'
-              },
-              parts: [
-                {
-                  partRef: 'Part-002',
-                  material: 'Aluminum',
-                  quantity: 1,
-                  unitPrice: 850.00,
-                  totalPrice: 850.00
-                }
-              ],
-              createdAt: new Date().toISOString()
-            }
-          ];
-          
-          const mockOrder = mockOrders.find(o => o.id === id || o._id === id);
-          if (mockOrder) {
-            console.log('Found order in mock data:', mockOrder);
-            console.warn('⚠️ WARNING: Using mock data instead of real backend data!');
-            toast.error('Backend connection failed - showing mock data');
-            setOrder(mockOrder);
-            return;
-          }
-          
-          toast.error(response.data.message || 'Order not found');
-        }
-      } catch (apiError) {
-        console.error('Regular API failed:', apiError);
-        console.log('Regular API error details:', apiError.response?.data);
-        console.log('Falling back to mock data...');
-        
-        // Try mock data as fallback
-        const mockOrders = [
-          {
-            id: '68c519d8988fbbd8c570359d',
-            _id: '68c519d8988fbbd8c570359d',
-            orderNumber: 'ORD250913780',
-            inquiryNumber: 'INQ-000001',
-            status: 'pending',
-            paymentStatus: 'pending',
-            amount: 250.00,
-            totalAmount: 250.00,
-            date: '9/6/2025',
-            customer: {
-              firstName: 'Bhushan',
-              lastName: 'Jadhav',
-              email: 'bhushan@gmail.com'
-            },
-            parts: [
-              {
-                partRef: 'Test Part',
-                material: 'Steel',
-                quantity: 1,
-                unitPrice: 250.00,
-                totalPrice: 250.00
-              }
-            ],
-            createdAt: new Date().toISOString()
-          }
-        ];
-        
-        const mockOrder = mockOrders.find(o => o.id === id || o._id === id);
-        if (mockOrder) {
-          console.log('Found order in mock data:', mockOrder);
-          console.warn('⚠️ WARNING: Using mock data instead of real backend data!');
-          toast.error('Backend connection failed - showing mock data');
-          setOrder(mockOrder);
-          return;
-        }
-        
+        console.log('Order not found:', response.data.message);
         toast.error('Order not found');
       }
     } catch (error) {
@@ -558,18 +398,27 @@ const OrderDetail = () => {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading order details...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!order) {
     return (
       <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          <div className="mb-4 p-4 bg-red-100 border border-red-300 rounded-lg">
-            <h3 className="text-lg font-medium text-red-800">OrderDetail Component Loaded!</h3>
-            <p className="text-sm text-red-700">Order ID: {id}</p>
-            <p className="text-sm text-red-700">Order not found in database</p>
-          </div>
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900">Order not found</h1>
-            <Link to="/orders" className="text-blue-600 hover:text-blue-800">
+            <p className="text-gray-600 mt-2">The order you're looking for doesn't exist or you don't have permission to view it.</p>
+            <Link to="/orders" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
               Back to Orders
             </Link>
           </div>

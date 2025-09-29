@@ -86,15 +86,18 @@ const ComponentManagerPage = () => {
               <p className="mt-2 text-gray-600">Manage materials, thickness, and component specifications for your inquiries</p>
             </div>
             <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-              <Link
-                to="/inquiry/new"
-                className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                New Inquiry
-              </Link>
+              {/* Only show New Inquiry button for customers */}
+              {user?.role === 'customer' && (
+                <Link
+                  to="/inquiry/new"
+                  className="inline-flex items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  New Inquiry
+                </Link>
+              )}
             </div>
           </div>
 
@@ -168,12 +171,21 @@ const ComponentManagerPage = () => {
           {filteredInquiries.length === 0 && (
             <div className="text-center py-12">
               <div className="text-gray-500 text-lg mb-4">No inquiries found</div>
-              <Link
-                to="/inquiry/new"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                Create your first inquiry
-              </Link>
+              {/* Only show inquiry creation button for customers, not for admin/backoffice users */}
+              {user?.role === 'customer' && (
+                <Link
+                  to="/inquiry/new"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  Create your first inquiry
+                </Link>
+              )}
+              {/* Show different message for admin users */}
+              {user?.role !== 'customer' && (
+                <div className="text-gray-500 text-sm">
+                  No inquiries found. Inquiries will appear here once customers submit them.
+                </div>
+              )}
             </div>
           )}
         </div>

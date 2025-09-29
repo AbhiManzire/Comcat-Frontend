@@ -13,21 +13,57 @@ const InquiryDetail = () => {
   const [showComponentManager, setShowComponentManager] = useState(false);
 
   useEffect(() => {
-    fetchInquiry();
-  }, [id]);
+    if (user) {
+      fetchInquiry();
+    }
+  }, [id, user]);
 
   const fetchInquiry = async () => {
     try {
       setLoading(true);
       
+      console.log('=== FETCHING INQUIRY ===');
+      console.log('Inquiry ID:', id);
+      console.log('User object:', user);
+      console.log('User role:', user?.role);
+      console.log('User ID:', user?._id);
+      
+      // Check if user is loaded
+      if (!user) {
+        console.log('User not loaded yet, waiting...');
+        setLoading(false);
+        return;
+      }
+      
       // Use admin API if user is admin/backoffice, otherwise use regular API
       const isAdmin = user?.role === 'admin' || user?.role === 'backoffice' || user?.role === 'subadmin';
-      const response = isAdmin 
-        ? await inquiryAPI.getInquiryAdmin(id)
-        : await inquiryAPI.getInquiry(id);
+      console.log('Is admin:', isAdmin);
+      console.log('User role check:', {
+        role: user?.role,
+        isAdmin: user?.role === 'admin',
+        isBackoffice: user?.role === 'backoffice',
+        isSubadmin: user?.role === 'subadmin'
+      });
+      
+      // Temporary workaround: if user email is admin@gmail.com, treat as admin
+      const isAdminByEmail = user?.email === 'admin@gmail.com';
+      const finalIsAdmin = isAdmin || isAdminByEmail;
+      console.log('Final admin check:', { isAdmin, isAdminByEmail, finalIsAdmin });
+      
+      let response;
+      if (finalIsAdmin) {
+        console.log('Using admin API...');
+        response = await inquiryAPI.getInquiryAdmin(id);
+      } else {
+        console.log('Using regular API...');
+        response = await inquiryAPI.getInquiry(id);
+      }
+      
+      console.log('API Response:', response);
       
       if (response.data.success) {
         const inquiryData = response.data.inquiry;
+        console.log('Inquiry data received:', inquiryData);
         
         // Transform the data to match the component's expected format
         setInquiry({
@@ -50,10 +86,12 @@ const InquiryDetail = () => {
           timeline: generateTimeline(inquiryData)
         });
       } else {
+        console.log('API returned error:', response.data.message);
         toast.error(response.data.message || 'Failed to fetch inquiry details');
       }
     } catch (error) {
       console.error('Error fetching inquiry:', error);
+      console.error('Error details:', error.response?.data);
       toast.error('Failed to fetch inquiry details');
     } finally {
       setLoading(false);
@@ -101,6 +139,73 @@ const InquiryDetail = () => {
   const handleComponentsChange = () => {
     // Refresh inquiry data when components are updated
     fetchInquiry();
+  };
+
+  const handleFileDownload = async (file) => {
+    try {
+      // Get the auth token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Please login to download files');
+        return;
+      }
+
+      // Use the correct API base URL
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      const downloadUrl = `${apiBaseUrl}/inquiry/${id}/files/${file.fileName || file.name}/download`;
+      
+      console.log('Download URL:', downloadUrl);
+      console.log('File data:', file);
+      console.log('Inquiry ID:', id);
+      console.log('File name:', file.fileName || file.name);
+      
+      // First, test if the backend is accessible
+      try {
+        const healthResponse = await fetch(`${apiBaseUrl.replace('/api', '')}/api/health`);
+        if (healthResponse.ok) {
+          console.log('Backend is accessible');
+        } else {
+          console.log('Backend health check failed');
+        }
+      } catch (healthError) {
+        console.log('Backend health check error:', healthError);
+        toast.error('Backend server is not accessible. Please check if the server is running on port 5000.');
+        return;
+      }
+      
+      // Add authorization header by creating a fetch request first
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Download failed:', response.status, errorText);
+        throw new Error(`Download failed: ${response.status} ${errorText}`);
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.originalName || file.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('File download started');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error(`Failed to download file: ${error.message}`);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -168,7 +273,13 @@ const InquiryDetail = () => {
               </div>
               <div className="flex space-x-3">
                 <button 
-                  onClick={() => setShowComponentManager(!showComponentManager)}
+                  onClick={() => {
+                    console.log('=== MANAGE COMPONENTS BUTTON CLICKED ===');
+                    console.log('Current showComponentManager:', showComponentManager);
+                    console.log('Inquiry ID:', inquiry?.inquiryId);
+                    setShowComponentManager(!showComponentManager);
+                    console.log('New showComponentManager will be:', !showComponentManager);
+                  }}
                   className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 flex items-center"
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -189,6 +300,9 @@ const InquiryDetail = () => {
           {/* Component Manager */}
           {showComponentManager && (
             <div className="mb-6">
+              {console.log('=== RENDERING COMPONENT MANAGER ===')}
+              {console.log('showComponentManager:', showComponentManager)}
+              {console.log('inquiry.inquiryId:', inquiry?.inquiryId)}
               <ComponentManager 
                 inquiryId={inquiry.inquiryId} 
                 onComponentsChange={handleComponentsChange}
@@ -196,74 +310,200 @@ const InquiryDetail = () => {
             </div>
           )}
 
-          {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Technical Specifications - Full Width (Hidden when ComponentManager is active) */}
+          {!showComponentManager && (
+            <div className="bg-white shadow rounded-lg p-6 mb-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Technical Specifications</h3>
+            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px]">
+                      <div className="flex items-center">
+                        PART REF
+                        <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px]">
+                      <div className="flex items-center">
+                        MATERIAL
+                        <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px]">
+                      <div className="flex items-center">
+                        THICKNESS
+                        <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px]">
+                      <div className="flex items-center">
+                        GRADE
+                        <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px]">
+                      <div className="flex items-center">
+                        REMARK
+                        <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[100px]">
+                      <div className="flex items-center">
+                        QUANTITY
+                        <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {inquiry.specifications && inquiry.specifications.length > 0 ? (
+                    inquiry.specifications.map((spec, index) => (
+                      <tr key={index} className="hover:bg-gray-50">
+                        <td className="px-4 py-4 text-sm text-gray-900 font-medium">
+                          <div className="flex items-center">
+                            <svg className="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span 
+                              title={spec.partRef || spec.fileName || 'N/A'}
+                              className="cursor-help max-w-[120px] truncate"
+                            >
+                              {(() => {
+                                const fileName = spec.partRef || spec.fileName || 'N/A';
+                                console.log('Filename:', fileName, 'Length:', fileName.length);
+                                if (fileName.length > 10) {
+                                  const truncated = fileName.substring(0, 10) + '...';
+                                  console.log('Truncated:', truncated);
+                                  return truncated;
+                                }
+                                return fileName;
+                              })()}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-sm text-gray-900 font-medium">{spec.material || 'N/A'}</td>
+                        <td className="px-4 py-4 text-sm text-gray-900">{spec.thickness || 'N/A'}</td>
+                        <td className="px-4 py-4 text-sm text-gray-900">{spec.grade || 'N/A'}</td>
+                        <td className="px-4 py-4 text-sm text-gray-900">{spec.remarks || spec.remark || 'No remarks'}</td>
+                        <td className="px-4 py-4 text-sm text-gray-900">{spec.quantity || 'N/A'}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-8 text-center text-sm text-gray-500">
+                        No technical specifications available
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          )}
+
+          {/* Main Content (Hidden when ComponentManager is active) */}
+          {!showComponentManager && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column */}
             <div className="space-y-6">
-              {/* Technical Specifications */}
-              <div className="bg-white shadow rounded-lg p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Technical Specifications</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thickness</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {inquiry.specifications.map((spec, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{spec.material}</td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{spec.thickness}</td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{spec.quantity}</td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{spec.remarks}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
 
               {/* Uploaded Files */}
               <div className="bg-white shadow rounded-lg p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Uploaded Files</h3>
                 <div className="space-y-3">
-                  {inquiry.files.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                            <span className="text-blue-600 text-xs">
-                              {file.type === 'ZIP' ? '📦' : file.type === 'Excel' ? '📊' : '📄'}
-                            </span>
+                  {inquiry.files && inquiry.files.length > 0 ? (
+                    inquiry.files.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-600 text-xs">
+                                {file.fileType === '.zip' ? '📦' : 
+                                 file.fileType === '.xlsx' || file.fileType === '.xls' ? '📊' : 
+                                 file.fileType === '.pdf' ? '📄' : '📄'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="ml-3">
+                            <p 
+                              className="text-sm font-medium text-gray-900 truncate max-w-[200px]" 
+                              title={file.originalName || file.name}
+                            >
+                              {(() => {
+                                const fileName = file.originalName || file.name || 'N/A';
+                                if (fileName.length > 25) {
+                                  return fileName.substring(0, 25) + '...';
+                                }
+                                return fileName;
+                              })()}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {file.fileType || file.type} • {(file.fileSize || file.size) ? `${Math.round((file.fileSize || file.size) / 1024)} KB` : 'Unknown size'}
+                            </p>
                           </div>
                         </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                          <p className="text-xs text-gray-500">.{file.type} • {file.size}</p>
-                        </div>
+                        <button 
+                          onClick={() => handleFileDownload(file)}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center px-3 py-1 rounded-md hover:bg-blue-50 transition-colors"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          Download
+                        </button>
                       </div>
-                      <button className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Download
-                      </button>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-gray-400 text-4xl mb-2">📄</div>
+                      <p className="text-sm text-gray-500">No files uploaded</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
               {/* Special Instructions */}
               <div className="bg-white shadow rounded-lg p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Timeline</h3>
+                <div className="space-y-4">
+                  {inquiry.timeline.map((event, index) => (
+                    <div key={index} className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <div className={`w-3 h-3 rounded-full mt-1 ${
+                          event.color === 'green' ? 'bg-green-500' : 
+                          event.color === 'blue' ? 'bg-blue-500' : 'bg-gray-500'
+                        }`}></div>
+                      </div>
+                      <div className="ml-4">
+                        <p className="text-sm font-medium text-gray-900">{event.event}</p>
+                        {event.description && (
+                          <p className="text-xs text-gray-600">{event.description}</p>
+                        )}
+                        <p className="text-xs text-gray-500">{event.date}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* <div className="bg-white shadow rounded-lg p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Special Instructions</h3>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-sm text-gray-700">{inquiry.specialInstructions}</p>
                 </div>
-              </div>
+              </div> */}
             </div>
 
             {/* Right Column */}
@@ -304,30 +544,10 @@ const InquiryDetail = () => {
               </div>
 
               {/* Timeline */}
-              <div className="bg-white shadow rounded-lg p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Timeline</h3>
-                <div className="space-y-4">
-                  {inquiry.timeline.map((event, index) => (
-                    <div key={index} className="flex items-start">
-                      <div className="flex-shrink-0">
-                        <div className={`w-3 h-3 rounded-full mt-1 ${
-                          event.color === 'green' ? 'bg-green-500' : 
-                          event.color === 'blue' ? 'bg-blue-500' : 'bg-gray-500'
-                        }`}></div>
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-900">{event.event}</p>
-                        {event.description && (
-                          <p className="text-xs text-gray-600">{event.description}</p>
-                        )}
-                        <p className="text-xs text-gray-500">{event.date}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

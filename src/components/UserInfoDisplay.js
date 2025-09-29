@@ -19,25 +19,25 @@ const UserInfoDisplay = () => {
       <div className="space-y-2">
         <h4 className="text-md font-medium text-gray-700 border-b pb-2">Personal Details</h4>
         
-        <div className="space-y-1">
-          <div className="flex justify-between">
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-gray-600">Name:</span>
             <span className="text-sm text-gray-800">
               {user.firstName} {user.lastName}
             </span>
           </div>
           
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-gray-600">Email:</span>
             <span className="text-sm text-gray-800">{user.email}</span>
           </div>
           
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-gray-600">Phone:</span>
             <span className="text-sm text-gray-800">{user.phoneNumber}</span>
           </div>
           
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-gray-600">Department:</span>
             <span className="text-sm text-gray-800">{user.department}</span>
           </div>

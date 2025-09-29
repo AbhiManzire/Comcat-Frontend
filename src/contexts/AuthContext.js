@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { tokenUtils, roleUtils, apiErrorUtils, storageUtils } from '../utils/authUtils';
 
 // Configure axios base URL
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -17,12 +18,19 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(storageUtils.getToken());
 
   useEffect(() => {
-    if (token) {
+    if (token && tokenUtils.isValidToken(token)) {
       fetchUserProfile();
     } else {
+      // Clear invalid token
+      if (token) {
+        console.log('Invalid token detected, clearing auth data');
+        storageUtils.clearAuthData();
+        setToken(null);
+        setUser(null);
+      }
       setLoading(false);
     }
   }, [token]);
@@ -30,18 +38,49 @@ export const AuthProvider = ({ children }) => {
   const fetchUserProfile = async () => {
     try {
       console.log('Fetching user profile with token:', token);
+      
+      // Validate token before making request
+      if (!tokenUtils.isValidToken(token)) {
+        throw new Error('Invalid token');
+      }
+      
       const response = await axios.get(`${API_BASE_URL}/auth/profile`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
+      
       console.log('User profile fetched successfully:', response.data);
-      setUser(response.data);
+      
+      // Normalize user data to handle both old and new formats
+      const userData = {
+        ...response.data,
+        role: roleUtils.getUserRole(response.data),
+        id: roleUtils.getUserId(response.data)
+      };
+      
+      setUser(userData);
+      console.log('User state updated:', userData);
+      
     } catch (error) {
       console.error('Error fetching user profile:', error);
       console.error('Error details:', error.response?.data);
-      // Don't logout immediately, just set user to null
-      setUser(null);
+      
+      // Handle different types of errors
+      if (apiErrorUtils.isAuthError(error)) {
+        console.log('Authentication error, clearing token and user data');
+        storageUtils.clearAuthData();
+        setToken(null);
+        setUser(null);
+      } else if (error.response?.status === 404 && error.response?.data?.message === 'User not found') {
+        console.log('User not found error, clearing token and user data');
+        storageUtils.clearAuthData();
+        setToken(null);
+        setUser(null);
+      } else {
+        console.log('Non-auth error, keeping token but clearing user data');
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -58,18 +97,34 @@ export const AuthProvider = ({ children }) => {
       console.log('Login response:', response.data);
       const { token: newToken, user: userData } = response.data;
       
-      console.log('Setting token and user data:', { newToken, userData });
-      localStorage.setItem('token', newToken);
-      setToken(newToken);
-      setUser(userData);
+      // Validate token before storing
+      if (!tokenUtils.isValidToken(newToken)) {
+        throw new Error('Invalid token received from server');
+      }
       
-      console.log('Login successful, user set to:', userData);
-      return { success: true, user: userData };
+      // Normalize user data
+      const normalizedUserData = {
+        ...userData,
+        role: roleUtils.getUserRole(userData),
+        id: roleUtils.getUserId(userData)
+      };
+      
+      console.log('Setting token and user data:', { newToken, normalizedUserData });
+      
+      // Use storage utils for consistent token management
+      if (storageUtils.setToken(newToken)) {
+        setToken(newToken);
+        setUser(normalizedUserData);
+        console.log('Login successful, user set to:', normalizedUserData);
+        return { success: true, user: normalizedUserData };
+      } else {
+        throw new Error('Failed to store token');
+      }
     } catch (error) {
       console.error('Login error:', error);
       return {
         success: false,
-        error: error.response?.data?.message || 'Login failed'
+        error: apiErrorUtils.getErrorMessage(error)
       };
     }
   };
@@ -102,7 +157,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    console.log('Logging out user');
+    storageUtils.clearAuthData();
     setToken(null);
     setUser(null);
   };
