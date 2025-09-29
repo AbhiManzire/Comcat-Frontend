@@ -256,7 +256,7 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
       if (response.data.success) {
         // Refresh components to show new data
         queryClient.invalidateQueries(['components', inquiryId]);
-        setUploadedFiles(prev => [...prev, ...Array.from(files)]);
+        // setUploadedFiles(prev => [...prev, ...Array.from(files)]);
       }
     } catch (error) {
       console.error('Error uploading files:', error);
