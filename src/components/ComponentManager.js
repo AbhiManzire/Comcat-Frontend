@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { inquiryAPI } from '../services/api';
 import { 
@@ -28,7 +28,7 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
     price: 0
   });
   const [dragActive, setDragActive] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
+  // const [uploadedFiles, setUploadedFiles] = useState([]);
   const [estimateNumber, setEstimateNumber] = useState('');
   const fileInputRef = useRef(null);
   const queryClient = useQueryClient();
@@ -164,29 +164,29 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
   };
 
   // Handle individual component field update with debouncing
-  const handleComponentFieldUpdate = (componentId, field, value) => {
-    // Only update the specific component field
-    const updatedComponents = components.map(comp => {
-      if (comp._id === componentId || comp.partRef === componentId) {
-        return { 
-          ...comp, 
-          [field]: value, 
-          modified: new Date() 
-        };
-      }
-      return comp; // Return unchanged component
-    });
+  // const handleComponentFieldUpdate = (componentId, field, value) => {
+  //   // Only update the specific component field
+  //   const updatedComponents = components.map(comp => {
+  //     if (comp._id === componentId || comp.partRef === componentId) {
+  //       return { 
+  //         ...comp, 
+  //         [field]: value, 
+  //         modified: new Date() 
+  //       };
+  //     }
+  //     return comp; // Return unchanged component
+  //   });
     
-    // Update only if the component actually changed
-    const hasChanges = updatedComponents.some((comp, index) => {
-      const originalComp = components[index];
-      return comp[field] !== originalComp[field];
-    });
+  //   // Update only if the component actually changed
+  //   const hasChanges = updatedComponents.some((comp, index) => {
+  //     const originalComp = components[index];
+  //     return comp[field] !== originalComp[field];
+  //   });
     
-    if (hasChanges) {
-      updateInquiryMutation.mutate(updatedComponents);
-    }
-  };
+  //   if (hasChanges) {
+  //     updateInquiryMutation.mutate(updatedComponents);
+  //   }
+  // };
 
   // Cancel edit
   const cancelEdit = () => {

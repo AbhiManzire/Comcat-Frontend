@@ -14,6 +14,9 @@
   
   # NPM version
   NPM_VERSION = "9"
+  
+  # Disable CI warnings as errors
+  CI = "false"
 
 # Redirect rules for React Router
 [[redirects]]

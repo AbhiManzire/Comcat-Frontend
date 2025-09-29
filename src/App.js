@@ -9,7 +9,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Header from './components/layout/Header';
 import InternalHeader from './components/layout/InternalHeader';
 import Footer from './components/layout/Footer';
-import LoadingSpinner from './components/common/LoadingSpinner';
+// import LoadingSpinner from './components/common/LoadingSpinner';
 
 // Pages
 import Home from './pages/Home';
@@ -27,7 +27,7 @@ import BackOfficeDashboard from './pages/BackOfficeDashboard';
 import BackOfficeMaterialManagement from './pages/BackOfficeMaterialManagement';
 import ComponentManagerPage from './pages/ComponentManagerPage';
 import ComponentManagerDetail from './pages/ComponentManagerDetail';
-import ComponentManagerLanding from './pages/ComponentManagerLanding';
+// import ComponentManagerLanding from './pages/ComponentManagerLanding';
 import QuotationResponse from './pages/inquiry/QuotationResponse';
 import QuotationPayment from './pages/payment/QuotationPayment';
 import OrderManagement from './pages/order/OrderManagement';
