@@ -67,6 +67,13 @@ const SignUp = () => {
     setLoading(true);
 
     try {
+      console.log('=== FORM DATA DEBUG ===');
+      console.log('formData.phone:', formData.phone);
+      console.log('formData.company:', formData.company);
+      console.log('formData.department:', formData.department);
+      console.log('formData.country:', formData.country);
+      console.log('=== END FORM DATA DEBUG ===');
+      
       const signupData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
