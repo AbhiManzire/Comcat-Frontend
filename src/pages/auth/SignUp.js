@@ -54,7 +54,7 @@ const SignUp = () => {
       { text: '1 lowercase', met: /[a-z]/.test(formData.password) },
       { text: '1 uppercase', met: /[A-Z]/.test(formData.password) },
       { text: '1 digit', met: /\d/.test(formData.password) },
-      { text: '1 special character', met: /[!@#$%^&*(),.?":{}|<>]/.test(formData.password) }
+      { text: '1 special character (@$!%*?&)', met: /[@$!%*?&]/.test(formData.password) }
     ];
     
     const unmetRequirements = passwordRequirements.filter(req => !req.met);
@@ -75,7 +75,14 @@ const SignUp = () => {
         phoneNumber: formData.phone,
         companyName: formData.company,
         department: formData.department,
-        country: formData.country
+        country: formData.country,
+        address: {
+          street: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          country: formData.country
+        }
       };
       
       console.log('Sending signup data:', signupData);
@@ -108,7 +115,7 @@ const SignUp = () => {
     { text: '1 lowercase', met: /[a-z]/.test(formData.password) },
     { text: '1 uppercase', met: /[A-Z]/.test(formData.password) },
     { text: '1 digit', met: /\d/.test(formData.password) },
-    { text: '1 special character', met: /[!@#$%^&*(),.?":{}|<>]/.test(formData.password) }
+    { text: '1 special character (@$!%*?&)', met: /[@$!%*?&]/.test(formData.password) }
   ];
 
   return (
