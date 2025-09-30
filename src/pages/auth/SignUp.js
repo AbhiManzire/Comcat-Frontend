@@ -86,6 +86,8 @@ const SignUp = () => {
       };
       
       console.log('Sending signup data:', signupData);
+      console.log('Full signup data keys:', Object.keys(signupData));
+      console.log('Address object:', signupData.address);
       console.log('🚀 CALLING API NOW...');
       const result = await signup(signupData);
       console.log('✅ API CALL COMPLETED!');
