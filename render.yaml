@@ -9,6 +9,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: REACT_APP_API_URL
-        value: https://comcat-backend.onrender.com/api
+        value: https://comcat-backend-1.onrender.com/api
       - key: REACT_APP_CLIENT_URL
-        value: https://komacut-frontend.onrender.com
+        value: https://comcat-frontends.onrender.com
