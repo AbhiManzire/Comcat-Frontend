@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { quotationAPI, inquiryAPI, orderAPI } from '../services/api';
+import toast from 'react-hot-toast';
 
 const Dashboard = () => {
   const { user, loading } = useAuth();
@@ -66,9 +67,14 @@ const Dashboard = () => {
   const fetchQuotations = async () => {
     try {
       setQuotationsLoading(true);
+      console.log('Fetching quotations...');
       const response = await quotationAPI.getQuotations();
+      console.log('Quotations response:', response.data);
       if (response.data.success) {
         setQuotations(response.data.quotations || []);
+        console.log('Quotations set:', response.data.quotations?.length || 0);
+      } else {
+        console.error('Quotations API failed:', response.data.message);
       }
     } catch (error) {
       console.error('Error fetching quotations:', error);
@@ -81,9 +87,14 @@ const Dashboard = () => {
   const fetchInquiries = async () => {
     try {
       setInquiriesLoading(true);
+      console.log('Fetching inquiries...');
       const response = await inquiryAPI.getInquiries();
+      console.log('Inquiries response:', response.data);
       if (response.data.success) {
         setInquiries(response.data.inquiries || []);
+        console.log('Inquiries set:', response.data.inquiries?.length || 0);
+      } else {
+        console.error('Inquiries API failed:', response.data.message);
       }
     } catch (error) {
       console.error('Error fetching inquiries:', error);
@@ -96,9 +107,14 @@ const Dashboard = () => {
   const fetchOrders = async () => {
     try {
       setOrdersLoading(true);
+      console.log('Fetching orders...');
       const response = await orderAPI.getOrders();
+      console.log('Orders response:', response.data);
       if (response.data.success) {
         setOrders(response.data.orders || []);
+        console.log('Orders set:', response.data.orders?.length || 0);
+      } else {
+        console.error('Orders API failed:', response.data.message);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -120,12 +136,28 @@ const Dashboard = () => {
     }
   }, [activeTab, user]);
 
-  // Fetch quotations for overview tab
+  // Fetch all data for overview tab
   useEffect(() => {
     if (user?.role !== 'admin' && user?.role !== 'backoffice' && activeTab === 'overview') {
       fetchQuotations();
+      fetchInquiries();
+      fetchOrders();
     }
   }, [user, activeTab]);
+
+  // Initial data fetch when component mounts
+  useEffect(() => {
+    console.log('Dashboard useEffect - User:', user);
+    console.log('Dashboard useEffect - User role:', user?.role);
+    console.log('Dashboard useEffect - Loading:', loading);
+    
+    if (user && user.role !== 'admin' && user.role !== 'backoffice' && user.role !== 'subadmin') {
+      console.log('Fetching initial dashboard data for customer');
+      fetchQuotations();
+      fetchInquiries();
+      fetchOrders();
+    }
+  }, [user]);
 
   const [recentActivity, setRecentActivity] = useState([
     {
@@ -474,6 +506,14 @@ const Dashboard = () => {
                                   ₹{quotation.totalAmount.toLocaleString()}
                                 </span>
                               )}
+                              {quotation.status === 'sent' && (
+                                <button
+                                  onClick={() => navigate(`/payment/${quotation.id}`)}
+                                  className="bg-orange-500 text-white px-3 py-1 rounded-md text-xs font-medium hover:bg-orange-600 transition-colors"
+                                >
+                                  Pay Now
+                                </button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -587,13 +627,13 @@ const Dashboard = () => {
                           
                           {quotation.status === 'sent' && (
                             <div className="mt-4 flex space-x-3">
-                              <Link
-                                to={`/quotation/${quotation.id}/response`}
-                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                              <button
+                                onClick={() => navigate(`/payment/${quotation.id}`)}
+                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
                               >
-                                <span className="mr-2">✓</span>
-                                Accept Quotation
-                              </Link>
+                                <span className="mr-2">💳</span>
+                                Pay Now
+                              </button>
                               <Link
                                 to={`/quotation/${quotation.id}`}
                                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -661,8 +701,12 @@ const Dashboard = () => {
                                   ? 'bg-yellow-100 text-yellow-800'
                                   : inquiry.status === 'in_progress'
                                   ? 'bg-blue-100 text-blue-800'
+                                  : inquiry.status === 'accepted'
+                                  ? 'bg-green-100 text-green-800'
                                   : inquiry.status === 'completed'
                                   ? 'bg-green-100 text-green-800'
+                                  : inquiry.status === 'rejected'
+                                  ? 'bg-red-100 text-red-800'
                                   : 'bg-gray-100 text-gray-800'
                               }`}>
                                 {inquiry.status?.charAt(0).toUpperCase() + inquiry.status?.slice(1) || 'Pending'}
@@ -757,14 +801,14 @@ const Dashboard = () => {
                           
                           <div className="mt-4 flex space-x-3">
                             <Link
-                              to={`/orders/${order.id}`}
+                              to={`/order/${order.id}`}
                               className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               View Details
                             </Link>
                             {order.status === 'shipped' && (
                               <Link
-                                to={`/orders/${order.id}/tracking`}
+                                to={`/order/${order.id}/tracking`}
                                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
                               >
                                 Track Order

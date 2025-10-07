@@ -43,8 +43,24 @@ api.interceptors.response.use(
     console.error('API Error:', {
       url: error.config?.url,
       status: error.response?.status,
-      message: error.response?.data?.message || error.message
+      message: error.response?.data?.message || error.message,
+      data: error.response?.data
     });
+    
+    // Enhanced error logging
+    if (error.response) {
+      console.error('Error Response Details:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers
+      });
+    } else if (error.request) {
+      console.error('No response received:', error.request);
+    } else {
+      console.error('Error setting up request:', error.message);
+    }
+    
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -161,13 +177,13 @@ export const quotationAPI = {
   getQuotations: (params = {}) => api.get('/quotation/customer', { params }),
   
   // Get single quotation by ID
-  getQuotation: (id) => api.get(`/quotation/${id}`),
+  getQuotation: (id) => api.get(`/quotation/id/${id}`),
   
   // Get all quotations (Admin - can see all quotations)
   getAllQuotations: (params = {}) => api.get('/quotation', { params }),
   
   // Create quotation (Admin)
-  createQuotation: (quotationData) => api.post('/quotation', quotationData),
+  createQuotation: (quotationData) => api.post('/quotation/create', quotationData),
   
   // Update quotation (Admin)
   updateQuotation: (id, data) => api.put(`/quotation/${id}`, data),
@@ -177,6 +193,12 @@ export const quotationAPI = {
   
   // Customer response to quotation
   respondToQuotation: (id, response) => api.post(`/quotation/${id}/response`, response),
+  
+  // Accept quotation (alias for respondToQuotation with 'accepted')
+  acceptQuotation: (id, data) => api.post(`/quotation/${id}/response`, {
+    response: 'accepted',
+    ...data
+  }),
   
   // Get quotation PDF
   getQuotationPDF: (id) => api.get(`/quotation/${id}/pdf`, {
@@ -235,6 +257,11 @@ export const paymentAPI = {
   
   // Get payment history
   getPaymentHistory: (params = {}) => api.get('/payments/history', { params }),
+  
+  // Razorpay Payment Methods
+  createOrder: (data) => api.post('/payment/create-order', data),
+  verifyPayment: (data) => api.post('/payment/verify', data),
+  refundPayment: (data) => api.post('/payment/refund', data)
 };
 
 // Admin API
@@ -299,6 +326,9 @@ export const adminAPI = {
       },
     });
   },
+  
+  // Test SMS service
+  testSMS: (data) => api.post('/admin/test-sms', data),
 };
 
 // Notification API
@@ -343,6 +373,33 @@ export const fileAPI = {
   getFileInfo: (fileId) => api.get(`/files/${fileId}`),
 };
 
+// PDF Processing API
+export const pdfAPI = {
+  // Extract data from PDF
+  extractPdfData: (file) => {
+    const formData = new FormData();
+    formData.append('pdf', file);
+    
+    return api.post('/inquiry/extract-pdf-data', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  
+  // Extract data from ZIP file
+  extractZipData: (file) => {
+    const formData = new FormData();
+    formData.append('zip', file);
+    
+    return api.post('/inquiry/extract-zip-data', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+};
+
 // Utility functions
 export const handleApiError = (error) => {
   if (error.response) {
@@ -365,5 +422,6 @@ export const handleApiSuccess = (response) => {
     message: response.data?.message || 'Operation completed successfully',
   };
 };
+
 
 export default api;

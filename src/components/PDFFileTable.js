@@ -41,9 +41,11 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
   };
 
   const handleInputChange = (field, value) => {
+    // Ensure proper character encoding for text fields
+    const processedValue = typeof value === 'string' ? value.trim() : value;
     setEditingValues(prev => ({
       ...prev,
-      [field]: value
+      [field]: processedValue
     }));
   };
 
@@ -71,11 +73,11 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
         <p className="text-sm text-gray-600">Manage your uploaded PDF files and their specifications</p>
       </div>
       
-      <div className="overflow-x-auto px-4 sm:px-6 pr-6 sm:pr-8 lg:pr-10 xl:pr-16 max-w-full table-scrollbar">
-        <table className="min-w-full divide-y divide-gray-200 table-fixed">
+      <div className="overflow-x-auto px-4 sm:px-6 pr-6 sm:pr-8 lg:pr-10 xl:pr-16 max-w-full table-scrollbar" style={{ minWidth: '100%' }}>
+        <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '1200px', tableLayout: 'fixed' }}>
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
+              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '200px', width: '200px' }}>
                 <div className="flex items-center">
                   Part Ref
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,7 +85,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '150px', width: '150px' }}>
                 <div className="flex items-center">
                   Material
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,7 +93,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '120px', width: '120px' }}>
                 <div className="flex items-center">
                   Thickness
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,7 +101,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '150px', width: '150px' }}>
                 <div className="flex items-center">
                   Grade
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,7 +109,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '200px', width: '200px' }}>
                 <div className="flex items-center">
                   Remark
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,7 +117,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '100px', width: '100px' }}>
                 <div className="flex items-center">
                   Quantity
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,7 +125,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '120px', width: '120px' }}>
                 <div className="flex items-center">
                   Created
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,7 +133,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 pr-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+              <th className="px-3 sm:px-4 lg:px-6 pr-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '120px', width: '120px' }}>
                 Actions
               </th>
             </tr>
@@ -150,13 +152,14 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                         type="text"
                         value={editingValues.partRef || ''}
                         onChange={(e) => handleInputChange('partRef', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
                       />
                     ) : (
                       <div className="flex items-center">
                         <DocumentIcon className="h-5 w-5 text-gray-400 mr-2" />
                         <span 
-                          className="text-sm font-medium text-gray-900 truncate max-w-[200px]" 
+                          className="text-sm font-medium text-gray-900" 
                           title={file.partRef || file.name}
                         >
                           {(() => {
@@ -213,15 +216,20 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </td>
 
                   {/* Grade */}
-                  <td className="px-3 sm:px-4 lg:px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-4 lg:px-6 py-4 whitespace-nowrap" style={{ minWidth: '150px', width: '150px' }}>
                     {isEditing ? (
-                      <input
-                        type="text"
+                      <select
                         value={editingValues.grade || ''}
                         onChange={(e) => handleInputChange('grade', e.target.value)}
-                        placeholder="Enter grade"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        style={{ fontFamily: 'Inter, system-ui, sans-serif', maxWidth: '140px' }}
+                      >
+                        <option value="">Select Grade</option>
+                        <option value="Grade A">Grade A</option>
+                        <option value="Grade B">Grade B</option>
+                        <option value="Grade C">Grade C</option>
+                        <option value="Grade D">Grade D</option>
+                      </select>
                     ) : (
                       <span className="text-sm text-gray-900">{file.grade || '-'}</span>
                     )}
@@ -235,7 +243,8 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                         value={editingValues.remark || ''}
                         onChange={(e) => handleInputChange('remark', e.target.value)}
                         placeholder="Enter remark"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
                       />
                     ) : (
                       <span className="text-sm text-gray-900">{file.remark || '-'}</span>

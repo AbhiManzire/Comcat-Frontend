@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { quotationAPI } from '../services/api';
+import { quotationAPI, pdfAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
 const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
@@ -21,8 +21,10 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
   
   // New state for upload quotation mode
   const [isUploadQuotation, setIsUploadQuotation] = useState(false);
+  
   const [uploadedQuotationFile, setUploadedQuotationFile] = useState(null);
   const [totalAmount, setTotalAmount] = useState(0);
+  const [pdfProcessed, setPdfProcessed] = useState(false);
   
   // Determine if this is for multiple inquiries
   const isMultipleInquiries = inquiries && inquiries.length > 1;
@@ -58,30 +60,43 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
   };
 
   useEffect(() => {
+    console.log('QuotationForm useEffect - inquiry:', inquiry);
+    
+    // Reset upload quotation mode when component mounts or inquiry changes
+    setIsUploadQuotation(false);
+    setPdfProcessed(false);
+    setTotalAmount(0);
+    
     if (inquiry) {
       // Initialize parts with inquiry data and add pricing fields
       // Ensure parts is an array before mapping
       const inquiryParts = Array.isArray(inquiry.parts) ? inquiry.parts : [];
+      console.log('QuotationForm useEffect - inquiryParts:', inquiryParts);
       
       if (inquiryParts.length > 0) {
         const initialParts = inquiryParts.map(part => ({
           ...part,
           unitPrice: 0,
           totalPrice: 0,
+          grade: part.grade || '',
           remarks: part.remarks || ''
         }));
+        console.log('QuotationForm useEffect - setting parts from inquiry:', initialParts);
         setParts(initialParts);
       } else {
         // If no parts exist, create a default part
-        setParts([{
+        const defaultPart = {
           partRef: 'Sample Part',
           material: 'Zintec',
           thickness: '1.5',
+          grade: '',
           quantity: 1,
           unitPrice: 0,
           totalPrice: 0,
           remarks: ''
-        }]);
+        };
+        console.log('QuotationForm useEffect - setting default part:', defaultPart);
+        setParts([defaultPart]);
       }
     }
   }, [inquiry]);
@@ -108,6 +123,7 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
       partRef: '',
       material: 'Zintec',
       thickness: '1.5',
+      grade: '',
       quantity: 1,
       unitPrice: 0,
       totalPrice: 0,
@@ -182,6 +198,29 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
 
   // Apply material-wise pricing
   const applyMaterialPricing = () => {
+    // Validation: Check if any prices are entered
+    const hasAnyPrices = Object.values(materialPricing).some(price => price && price > 0);
+    
+    if (!hasAnyPrices) {
+      toast.error('Please enter at least one material price before applying');
+      return;
+    }
+    
+    // Validation: Check if all materials have prices
+    const materialsWithoutPrices = [];
+    parts.forEach(part => {
+      if (!materialPricing[part.material] || materialPricing[part.material] <= 0) {
+        if (!materialsWithoutPrices.includes(part.material)) {
+          materialsWithoutPrices.push(part.material);
+        }
+      }
+    });
+    
+    if (materialsWithoutPrices.length > 0) {
+      toast.error(`Please enter prices for: ${materialsWithoutPrices.join(', ')}`);
+      return;
+    }
+    
     const updatedParts = parts.map(part => {
       const materialPrice = materialPricing[part.material];
       if (materialPrice && materialPrice > 0) {
@@ -205,101 +244,88 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
     return materials.filter(material => material && material.trim() !== '');
   };
 
-  // Base pricing for common materials
-  const getBasePricing = () => {
-    return {
-      'Zintec': 25.00,
-      'Stainless Steel': 45.00,
-      'Aluminum': 35.00,
-      'Copper': 55.00,
-      'Brass': 40.00,
-      'Mild Steel': 20.00,
-      'Carbon Steel': 30.00,
-      'Galvanized Steel': 28.00,
-      'Iron': 15.00,
-      'Steel': 25.00
-    };
-  };
-
-  // Apply base pricing to all materials
-  const applyBasePricing = () => {
-    const basePricing = getBasePricing();
-    const updatedMaterialPricing = {};
-    
-    getUniqueMaterials().forEach(material => {
-      updatedMaterialPricing[material] = basePricing[material] || 20.00; // Default price if material not found
-    });
-    
-    setMaterialPricing(updatedMaterialPricing);
-    toast.success('Base pricing applied to all materials');
-  };
-
   // Calculate total price automatically when switching to upload quotation mode
   const calculateUploadQuotationTotal = () => {
-    const basePricing = getBasePricing();
-    let total = 0;
-    
-    parts.forEach(part => {
-      const materialPrice = basePricing[part.material] || 20.00; // Default price if material not found
-      const partTotal = materialPrice * part.quantity;
-      total += partTotal;
-    });
-    
-    setTotalAmount(total);
-    return total;
+    // Simple calculation - just set to 0, user will enter manually
+    setTotalAmount(0);
+    return 0;
   };
 
   // Handle upload quotation file
-  const handleUploadQuotationFile = (event) => {
+  const handleUploadQuotationFile = async (event) => {
     const file = event.target.files[0];
     if (file) {
-      setUploadedQuotationFile(file);
+      // Validate file type - only allow PDF files
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        toast.error('Only PDF files are allowed. Please upload a PDF file.');
+        event.target.value = ''; // Clear the file input
+        return;
+      }
       
-      // Parse the file to extract only total amount
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          // This is a simplified parser - you might want to use a library like xlsx
-          const text = e.target.result;
-          const lines = text.split('\n');
+      setUploadedQuotationFile(file);
+      setPdfProcessed(false); // Reset processed flag
+      
+      try {
+        // Show loading state
+        toast.loading('Processing PDF and extracting pricing information...', { duration: 0 });
+        
+        // Call the PDF processing API
+        const response = await pdfAPI.extractPdfData(file);
+        
+        if (response.data.success) {
+          const { parts: extractedParts, totalAmount: extractedTotal } = response.data;
           
-          let foundTotal = 0;
-          
-          // Look for total amount in the file
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
+          // Update parts with extracted data
+          if (extractedParts && extractedParts.length > 0) {
+            const processedParts = extractedParts.map(part => ({
+              partRef: part.partRef || `${part.material} ${part.thickness}`,
+              material: part.material || 'Zintec',
+              thickness: part.thickness || '1.5',
+              grade: part.grade || '',
+              quantity: part.quantity || 1,
+              unitPrice: part.unitPrice || 0,
+              totalPrice: part.totalPrice || 0,
+              remarks: part.remarks || ''
+            }));
             
-            // Look for total amount
-            if (line.toLowerCase().includes('total') && line.includes('$')) {
-              const match = line.match(/\$?(\d+\.?\d*)/);
-              if (match) {
-                foundTotal = parseFloat(match[1]);
-                break;
+            setParts(processedParts);
+            toast.dismiss(); // Clear loading toast
+            toast.success(`PDF processed successfully! Found ${processedParts.length} parts with pricing information.`);
+          }
+          
+          // Set total amount if extracted
+          if (extractedTotal && extractedTotal > 0) {
+            setTotalAmount(extractedTotal);
+            setPdfProcessed(true);
+            toast.success(`Total amount extracted: $${extractedTotal.toFixed(2)}`);
+          } else {
+            // Calculate total from parts
+            const calculatedTotal = extractedParts.reduce((sum, part) => sum + (part.totalPrice || 0), 0);
+            if (calculatedTotal > 0) {
+              setTotalAmount(calculatedTotal);
+              setPdfProcessed(true);
+              toast.success(`Total amount calculated: $${calculatedTotal.toFixed(2)}`);
+            } else {
+              // Check if any parts have pricing
+              const hasAnyPricing = extractedParts.some(part => part.unitPrice > 0);
+              if (hasAnyPricing) {
+                setTotalAmount(calculatedTotal);
+                setPdfProcessed(true);
+                toast.success(`Total amount calculated: $${calculatedTotal.toFixed(2)}`);
+              } else {
+                toast.success(`PDF uploaded: ${file.name}. Parts extracted but no pricing found. Please enter the total amount manually.`);
               }
             }
           }
-          
-          if (foundTotal > 0) {
-            setTotalAmount(foundTotal);
-            toast.success(`Quotation file uploaded. Total amount: $${foundTotal.toFixed(2)}`);
-          } else {
-            // If no total found, prompt user to enter manually
-            const manualTotal = prompt('Please enter the total amount from the quotation:');
-            if (manualTotal && !isNaN(parseFloat(manualTotal))) {
-              setTotalAmount(parseFloat(manualTotal));
-              toast.success(`Total amount set to: $${parseFloat(manualTotal).toFixed(2)}`);
-            }
-          }
-        } catch (error) {
-          console.error('Error parsing quotation file:', error);
-          toast.error('Error parsing quotation file. Please enter total amount manually.');
-          const manualTotal = prompt('Please enter the total amount from the quotation:');
-          if (manualTotal && !isNaN(parseFloat(manualTotal))) {
-            setTotalAmount(parseFloat(manualTotal));
-          }
+        } else {
+          toast.dismiss(); // Clear loading toast
+          toast.error('Failed to process PDF. Please enter the total amount manually.');
         }
-      };
-      reader.readAsText(file);
+      } catch (error) {
+        console.error('PDF processing error:', error);
+        toast.dismiss(); // Clear loading toast
+        toast.error('Failed to process PDF. Please enter the total amount manually.');
+      }
     }
   };
 
@@ -311,8 +337,8 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
 
   const calculateTotal = () => {
     if (isUploadQuotation) {
-      // In upload mode, use only the total amount
-      return totalAmount;
+      // In upload mode, only return total amount if PDF is processed
+      return pdfProcessed ? totalAmount : 0;
     }
     return parts.reduce((total, part) => total + (part.totalPrice || 0), 0);
   };
@@ -346,6 +372,7 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
           partRef: part.partRef,
           material: part.material,
           thickness: part.thickness,
+          grade: part.grade || '',
           quantity: part.quantity,
           unitPrice: part.unitPrice,
           totalPrice: part.totalPrice,
@@ -390,7 +417,7 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
   if (!currentInquiry) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-3 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
@@ -410,7 +437,7 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
         <form onSubmit={handleSubmit} className="p-3">
           {/* Customer Info */}
           <div className="mb-1 p-3 bg-gray-50 rounded-lg">
-            <h3 className="text-base font-medium text-gray-900 mb-1">Customer Information</h3>
+            <h3 className="text-base font-medium text-gray-900 mb-1">Customer Informationd</h3>
             {(() => {
               const customer = getCustomerData();
               return (
@@ -497,7 +524,106 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
             </div>
           )}
 
-          {/* Parts Section */}
+          {/* PDF Upload Section - Show when Upload Quotation is clicked */}
+          {isUploadQuotation && (
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Upload Quotation PDF</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsUploadQuotation(false)}
+                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+                >
+                  <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Switch to Manual Entry
+                </button>
+              </div>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleUploadQuotationFile}
+                  className="hidden"
+                  id="quotation-file-upload"
+                />
+                <label
+                  htmlFor="quotation-file-upload"
+                  className="cursor-pointer flex flex-col items-center"
+                >
+                  <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p className="text-sm text-gray-600 mb-2">
+                    {uploadedQuotationFile ? uploadedQuotationFile.name : 'Click to upload quotation PDF or drag and drop'}
+                  </p>
+                  <p className="text-xs text-gray-500">Only PDF files are allowed</p>
+                </label>
+              </div>
+              {uploadedQuotationFile && (
+                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-sm text-green-800">
+                    ✓ File selected: {uploadedQuotationFile.name}
+                  </p>
+                </div>
+              )}
+              
+              {/* Extracted Parts Information */}
+              {/* {uploadedQuotationFile && parts.length > 0 && (
+                <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="text-sm font-medium text-green-800 mb-2">
+                    ✓ Extracted Parts from PDF ({parts.length} parts found)
+                  </h4>
+                  <div className="text-xs text-green-700 space-y-1">
+                    {parts.slice(0, 3).map((part, index) => (
+                      <div key={index}>
+                        {part.material} {part.thickness} - Qty: {part.quantity} - ${part.unitPrice.toFixed(2)} each
+                        {part.unitPrice === 0 && (
+                          <span className="text-orange-600 ml-2">(No pricing found)</span>
+                        )}
+                      </div>
+                    ))}
+                    {parts.length > 3 && (
+                      <div className="text-green-600">... and {parts.length - 3} more parts</div>
+                    )}
+                  </div>
+                </div>
+              )} */}
+
+              {/* Manual Total Amount Input - Only show when PDF is uploaded */}
+              {uploadedQuotationFile && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Total Amount ($)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={totalAmount}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value) || 0;
+                      setTotalAmount(value);
+                      if (value > 0) {
+                        setPdfProcessed(true);
+                      }
+                    }}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    placeholder="Enter total amount from PDF (e.g., 150.00)"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {parts.length > 0 
+                      ? "Total amount has been automatically calculated from extracted parts. You can modify it if needed."
+                      : "Enter the total amount from your quotation PDF"
+                    }
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Parts Section - Only show when NOT in upload quotation mode */}
           {!isUploadQuotation && (
             <div className="mb-1">
               <div className="flex items-center justify-between mb-4">
@@ -569,7 +695,7 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Part Ref
@@ -622,6 +748,19 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
                         <option value="8.0">8.0mm</option>
                         <option value="10.0">10.0mm</option>
                       </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Grade
+                      </label>
+                      <input
+                        type="text"
+                        value={part.grade}
+                        onChange={(e) => handlePartChange(index, 'grade', e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                        placeholder="e.g., A36, 304, etc."
+                      />
                     </div>
 
                     <div>
@@ -683,39 +822,9 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
               </div>
             )}
 
-            {/* Upload Quotation Section */}
-            {isUploadQuotation && (
-              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-medium text-gray-900">Quotation Total</h4>
-                  <button
-                    type="button"
-                    onClick={() => setIsUploadQuotation(false)}
-                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-                  >
-                    <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Switch to Manual Entry
-                  </button>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Total Amount ($)
-                    </label>
-                    <div className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-100 text-gray-900 font-medium">
-                      ${totalAmount.toFixed(2)}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Total amount calculated based on material-wise pricing
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
 
-            {/* Total */}
+            {/* Total Amount - Show only when PDF is processed or manual pricing is done */}
+            {(isUploadQuotation && uploadedQuotationFile && pdfProcessed) || (!isUploadQuotation && parts.some(part => part.unitPrice > 0)) ? (
             <div className="mt-4 p-4 bg-blue-50 rounded-lg">
               <div className="flex justify-between items-center">
                 <span className="text-lg font-medium text-gray-900">Total Amount:</span>
@@ -724,18 +833,10 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
                 </span>
               </div>
             </div>
+            ) : null}
           </div>
           )}
 
-          {/* Total Amount - Always Visible */}
-          <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-medium text-gray-900">Total Amount:</span>
-              <span className="text-2xl font-bold text-blue-600">
-                ${isUploadQuotation ? totalAmount.toFixed(2) : calculateTotal().toFixed(2)}
-              </span>
-            </div>
-          </div>
 
           {/* Actions */}
           <div className="flex justify-end space-x-3">
@@ -746,6 +847,22 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
             >
               Cancel
             </button>
+            {isUploadQuotation && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (uploadedQuotationFile) {
+                    handleSubmit({ preventDefault: () => {} });
+                  } else {
+                    toast.error('Please upload a quotation PDF first');
+                  }
+                }}
+                disabled={loading || !uploadedQuotationFile}
+                className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loading ? 'Uploading...' : 'Upload Quotations'}
+              </button>
+            )}
             <button
               type="submit"
               disabled={loading}
@@ -772,26 +889,25 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
             </div>
 
             <div className="p-4">
-              <p className="text-sm text-gray-600 mb-4">
+              {/* <p className="text-sm text-gray-600 mb-4">
                 Set prices for each material type. All parts with the same material will get the same unit price.
-              </p>
+              </p> */}
 
-              {/* One-click base pricing button */}
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
+              {/* <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg"> */}
+                {/* <div className="flex items-center justify-between">
+                  {/* <div>
                     <h4 className="text-sm font-medium text-green-800">Quick Base Pricing</h4>
                     <p className="text-xs text-green-600">Apply standard base prices for all materials with one click</p>
-                  </div>
-                  <button
+                  </div> */}
+                  {/* <button
                     type="button"
                     onClick={applyBasePricing}
                     className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
                   >
                     Apply Base Prices
-                  </button>
-                </div>
-              </div>
+                  </button> */}
+                {/* </div> */} 
+              {/* </div> */}
 
               <div className="space-y-4">
                 {getUniqueMaterials().map((material, index) => (

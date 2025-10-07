@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { inquiryAPI } from '../../services/api';
 import ComponentManager from '../../components/ComponentManager';
+import QuotationPreparationModal from '../../components/QuotationPreparationModal';
 import { useAuth } from '../../contexts/AuthContext';
 
 const InquiryDetail = () => {
@@ -11,6 +12,7 @@ const InquiryDetail = () => {
   const [inquiry, setInquiry] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showComponentManager, setShowComponentManager] = useState(false);
+  const [showQuotationModal, setShowQuotationModal] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -35,6 +37,24 @@ const InquiryDetail = () => {
         return;
       }
       
+      // Check if ID is valid
+      if (!id || id === 'undefined' || id === 'null') {
+        console.error('Invalid inquiry ID:', id);
+        toast.error('Invalid inquiry ID');
+        setLoading(false);
+        return;
+      }
+      
+      // Check if user has a valid token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No authentication token found');
+        toast.error('Please login to view inquiry details');
+        window.location.href = '/login';
+        setLoading(false);
+        return;
+      }
+      
       // Use admin API if user is admin/backoffice, otherwise use regular API
       const isAdmin = user?.role === 'admin' || user?.role === 'backoffice' || user?.role === 'subadmin';
       console.log('Is admin:', isAdmin);
@@ -51,12 +71,44 @@ const InquiryDetail = () => {
       console.log('Final admin check:', { isAdmin, isAdminByEmail, finalIsAdmin });
       
       let response;
-      if (finalIsAdmin) {
-        console.log('Using admin API...');
-        response = await inquiryAPI.getInquiryAdmin(id);
-      } else {
-        console.log('Using regular API...');
-        response = await inquiryAPI.getInquiry(id);
+      try {
+        if (finalIsAdmin) {
+          console.log('Using admin API...');
+          response = await inquiryAPI.getInquiryAdmin(id);
+        } else {
+          console.log('Using regular API...');
+          response = await inquiryAPI.getInquiry(id);
+        }
+      } catch (apiError) {
+        console.error('API call failed:', apiError);
+        console.error('API error response:', apiError.response?.data);
+        console.error('API error status:', apiError.response?.status);
+        console.error('API error headers:', apiError.response?.headers);
+        
+        // Check for specific error types
+        if (apiError.response?.status === 401) {
+          toast.error('Authentication failed. Please login again.');
+          // Clear auth data and redirect to login
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+          return;
+        } else if (apiError.response?.status === 403) {
+          toast.error('Access denied. You do not have permission to view this inquiry.');
+          return;
+        } else if (apiError.response?.status === 404) {
+          toast.error('Inquiry not found.');
+          return;
+        } else if (apiError.response?.status === 500) {
+          toast.error('Server error. Please try again later.');
+          return;
+        } else if (apiError.code === 'ERR_NETWORK') {
+          toast.error('Network error. Please check if the backend server is running on port 5000.');
+          return;
+        } else {
+          toast.error(`API Error: ${apiError.response?.data?.message || apiError.message}`);
+          return;
+        }
       }
       
       console.log('API Response:', response);
@@ -92,6 +144,7 @@ const InquiryDetail = () => {
     } catch (error) {
       console.error('Error fetching inquiry:', error);
       console.error('Error details:', error.response?.data);
+      console.error('Error stack:', error.stack);
       toast.error('Failed to fetch inquiry details');
     } finally {
       setLoading(false);
@@ -139,6 +192,45 @@ const InquiryDetail = () => {
   const handleComponentsChange = () => {
     // Refresh inquiry data when components are updated
     fetchInquiry();
+  };
+
+  const handleCreateQuotation = async (inquiryId, files) => {
+    try {
+      // Calculate total amount from inquiry parts
+      const totalAmount = inquiry?.specifications?.reduce((total, part) => {
+        return total + (part.quantity * (part.unitPrice || 0));
+      }, 0) || 0;
+
+      const quotationData = {
+        inquiryId: inquiryId,
+        customerInfo: {
+          name: inquiry?.customer?.name || 'N/A',
+          company: inquiry?.customer?.company || 'N/A',
+          email: inquiry?.customer?.email || 'N/A',
+          phone: inquiry?.customer?.phone || 'N/A'
+        },
+        totalAmount: totalAmount,
+        items: inquiry?.specifications || []
+      };
+
+      // TODO: Call quotation API
+      console.log('Creating quotation:', quotationData);
+      toast.success('Quotation created successfully');
+    } catch (error) {
+      console.error('Error creating quotation:', error);
+      throw error;
+    }
+  };
+
+  const handleUploadQuotation = async (inquiryId, files) => {
+    try {
+      // TODO: Upload quotation PDF
+      console.log('Uploading quotation:', { inquiryId, files });
+      toast.success('Quotation uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading quotation:', error);
+      throw error;
+    }
   };
 
   const handleFileDownload = async (file) => {
@@ -214,6 +306,8 @@ const InquiryDetail = () => {
         return 'bg-yellow-100 text-yellow-800';
       case 'quoted':
         return 'bg-blue-100 text-blue-800';
+      case 'accepted':
+        return 'bg-green-100 text-green-800';
       case 'approved':
         return 'bg-green-100 text-green-800';
       case 'rejected':
@@ -272,27 +366,50 @@ const InquiryDetail = () => {
                 <p className="text-sm text-gray-500 mt-1">Created on {inquiry.createdAt}</p>
               </div>
               <div className="flex space-x-3">
-                <button 
-                  onClick={() => {
-                    console.log('=== MANAGE COMPONENTS BUTTON CLICKED ===');
-                    console.log('Current showComponentManager:', showComponentManager);
-                    console.log('Inquiry ID:', inquiry?.inquiryId);
-                    setShowComponentManager(!showComponentManager);
-                    console.log('New showComponentManager will be:', !showComponentManager);
-                  }}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 flex items-center"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  {showComponentManager ? 'Hide Components' : 'Manage Components'}
-                </button>
+                {/* Only show Manage Components for Back Office users */}
+                {(user?.role === 'admin' || user?.role === 'backoffice' || user?.role === 'subadmin' || user?.email === 'admin@gmail.com') && (
+                  <button 
+                    onClick={() => {
+                      console.log('=== MANAGE COMPONENTS BUTTON CLICKED ===');
+                      console.log('Current showComponentManager:', showComponentManager);
+                      console.log('Inquiry ID:', inquiry?.inquiryId);
+                      setShowComponentManager(!showComponentManager);
+                      console.log('New showComponentManager will be:', !showComponentManager);
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 flex items-center"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    {showComponentManager ? 'Hide Components' : 'Manage Components'}
+                  </button>
+                )}
+                
+                {/* Status indicator - show for all users */}
                 <button className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 flex items-center">
                   <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                   Quoted
                 </button>
+                
+                {/* Only show Create Quotation for Back Office users */}
+                {(user?.role === 'admin' || user?.role === 'backoffice' || user?.role === 'subadmin' || user?.email === 'admin@gmail.com') && (
+                  <button 
+                    onClick={() => {
+                      console.log('Create Quotation button clicked');
+                      console.log('Current showQuotationModal:', showQuotationModal);
+                      setShowQuotationModal(true);
+                      console.log('Setting showQuotationModal to true');
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 flex items-center"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Create Quotation
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -550,6 +667,26 @@ const InquiryDetail = () => {
           )}
         </div>
       </div>
+
+      {/* Quotation Preparation Modal */}
+      {console.log('Rendering modal check:', { showQuotationModal, inquiry: inquiry?.id })}
+      {showQuotationModal && (
+        <QuotationPreparationModal
+          isOpen={showQuotationModal}
+          onClose={() => setShowQuotationModal(false)}
+          inquiryId={inquiry?.id}
+          customerInfo={{
+            name: inquiry?.customer?.name || 'N/A',
+            company: inquiry?.customer?.company || 'N/A',
+            email: inquiry?.customer?.email || 'N/A'
+          }}
+          totalAmount={inquiry?.specifications?.reduce((total, part) => {
+            return total + (part.quantity * (part.unitPrice || 0));
+          }, 0) || 0}
+          onCreateQuotation={handleCreateQuotation}
+          onUploadQuotation={handleUploadQuotation}
+        />
+      )}
     </div>
   );
 };

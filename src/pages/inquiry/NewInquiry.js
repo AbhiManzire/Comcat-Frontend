@@ -353,6 +353,7 @@ const NewInquiry = () => {
                   files={pdfFiles}
                   onUpdateFile={handleUpdatePdfFile}
                   onDeleteFile={handleDeletePdfFile}
+                  showCreatedColumn={false}
                 />
               ) : null}
             </div>

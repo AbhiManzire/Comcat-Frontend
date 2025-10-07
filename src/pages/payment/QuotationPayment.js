@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { quotationAPI, orderAPI } from '../../services/api';
+import { quotationAPI, orderAPI, paymentAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import CustomPaymentModal from '../../components/CustomPaymentModal';
 
 const QuotationPayment = () => {
   const { id } = useParams();
@@ -10,6 +11,7 @@ const QuotationPayment = () => {
   const [loading, setLoading] = useState(true);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('online');
+  const [showCustomPayment, setShowCustomPayment] = useState(false);
 
   useEffect(() => {
     fetchQuotation();
@@ -36,41 +38,81 @@ const QuotationPayment = () => {
   const handlePayment = async () => {
     setPaymentLoading(true);
     try {
-      // Create order from quotation
-      const orderData = {
-        quotationId: quotation._id,
-        inquiryId: quotation.inquiry,
-        paymentMethod: paymentMethod,
-        status: paymentMethod === 'online' ? 'pending_payment' : 'confirmed',
-        totalAmount: quotation.totalAmount,
-        parts: quotation.parts,
-        customer: quotation.inquiry?.customer,
-        deliveryAddress: quotation.inquiry?.deliveryAddress
-      };
-
-      const response = await orderAPI.createOrder(quotation._id, orderData);
+      if (paymentMethod === 'direct') {
+        // Show custom payment modal for direct payment
+        setShowCustomPayment(true);
+        setPaymentLoading(false);
+        return;
+      }
       
-      if (response.data.success) {
-        if (paymentMethod === 'online') {
-          // Simulate payment gateway redirect
-          toast.success('Redirecting to payment gateway...');
-          // In real implementation, redirect to payment gateway
-          setTimeout(() => {
-            toast.success('Payment successful! Your order has been confirmed.');
-            navigate(`/order/${response.data.order.id}`);
-          }, 2000);
-        } else {
-          toast.success('Order created successfully! Payment will be collected on delivery.');
+      if (paymentMethod === 'online') {
+        // DUMMY PAYMENT - Skip real Razorpay integration for now
+        console.log('Processing dummy online payment...');
+        console.log('Amount:', quotation.totalAmount);
+        console.log('Quotation:', quotation.quotationNumber);
+        
+        // Simulate payment processing
+        toast.success('Processing dummy payment...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Accept quotation and create order directly
+        await acceptQuotation();
+        
+        const orderData = {
+          paymentMethod: 'online',
+          totalAmount: quotation.totalAmount,
+          parts: quotation.items || quotation.parts,
+          customer: quotation.inquiry?.customer,
+          deliveryAddress: quotation.inquiry?.deliveryAddress
+        };
+
+        const response = await orderAPI.createOrder(quotation._id, orderData);
+        
+        if (response.data.success) {
+          toast.success('Dummy payment successful! Order created.');
           navigate(`/order/${response.data.order.id}`);
+        } else {
+          toast.error(response.data.message || 'Failed to create order');
         }
       } else {
-        toast.error(response.data.message || 'Failed to create order');
+        // Cash on Delivery - accept quotation and create order
+        await acceptQuotation();
+        
+        const orderData = {
+          paymentMethod: 'cod',
+          status: 'confirmed',
+          totalAmount: quotation.totalAmount,
+          parts: quotation.items || quotation.parts,
+          customer: quotation.inquiry?.customer,
+          deliveryAddress: quotation.inquiry?.deliveryAddress
+        };
+
+        const response = await orderAPI.createOrder(quotation._id, orderData);
+        
+        if (response.data.success) {
+          toast.success('Order created successfully! Payment will be collected on delivery.');
+          navigate(`/order/${response.data.order.id}`);
+        } else {
+          toast.error(response.data.message || 'Failed to create order');
+        }
       }
     } catch (error) {
       console.error('Error processing payment:', error);
       toast.error('Payment failed. Please try again.');
     } finally {
       setPaymentLoading(false);
+    }
+  };
+
+  const acceptQuotation = async () => {
+    try {
+      const response = await quotationAPI.acceptQuotation(quotation._id);
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Failed to accept quotation');
+      }
+    } catch (error) {
+      console.error('Error accepting quotation:', error);
+      throw error;
     }
   };
 
@@ -170,6 +212,20 @@ const QuotationPayment = () => {
                     <span className="ml-3 text-sm text-gray-700">Online Payment (Credit/Debit Card, UPI, Net Banking)</span>
                   </label>
                 </div>
+
+                <div>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="direct"
+                      checked={paymentMethod === 'direct'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <span className="ml-3 text-sm text-gray-700">Direct Payment (UPI ID, PhonePe, Google Pay, Paytm)</span>
+                  </label>
+                </div>
                 
                 <div>
                   <label className="flex items-center">
@@ -188,9 +244,18 @@ const QuotationPayment = () => {
 
               {paymentMethod === 'online' && (
                 <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                  <h4 className="text-sm font-medium text-blue-900 mb-2">Payment Gateway</h4>
+                  <h4 className="text-sm font-medium text-blue-900 mb-2">Dummy Payment Gateway</h4>
                   <p className="text-sm text-blue-700">
-                    You will be redirected to our secure payment gateway to complete the transaction.
+                    <strong>DEMO MODE:</strong> This will simulate a successful payment without real money transaction.
+                  </p>
+                </div>
+              )}
+
+              {paymentMethod === 'direct' && (
+                <div className="mt-6 p-4 bg-green-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-green-900 mb-2">Dummy Direct Payment</h4>
+                  <p className="text-sm text-green-700">
+                    <strong>DEMO MODE:</strong> Simulate UPI ID, PhonePe, Google Pay, or Paytm payment without real transaction.
                   </p>
                 </div>
               )}
@@ -210,7 +275,7 @@ const QuotationPayment = () => {
                   disabled={paymentLoading}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
-                  {paymentLoading ? 'Processing...' : `Pay $${quotation.totalAmount?.toFixed(2) || '0.00'}`}
+                        {paymentLoading ? 'Processing...' : `Pay $${quotation.totalAmount?.toFixed(2) || '0.00'} (Demo)`}
                 </button>
               </div>
 
@@ -223,6 +288,39 @@ const QuotationPayment = () => {
           </div>
         </div>
       </div>
+
+      {/* Custom Payment Modal */}
+      <CustomPaymentModal
+        isOpen={showCustomPayment}
+        onClose={() => setShowCustomPayment(false)}
+        quotation={quotation}
+        onPaymentSuccess={async () => {
+          try {
+            // Accept quotation and create order for direct payment
+            await acceptQuotation();
+            
+            const orderData = {
+              paymentMethod: 'direct',
+              totalAmount: quotation.totalAmount,
+              parts: quotation.items || quotation.parts,
+              customer: quotation.inquiry?.customer,
+              deliveryAddress: quotation.inquiry?.deliveryAddress
+            };
+
+            const response = await orderAPI.createOrder(quotation._id, orderData);
+            
+            if (response.data.success) {
+              toast.success('Order created successfully! Payment details sent to your registered number.');
+              navigate(`/order/${response.data.order.id}`);
+            } else {
+              toast.error(response.data.message || 'Failed to create order');
+            }
+          } catch (error) {
+            console.error('Direct payment error:', error);
+            toast.error('Payment processing failed. Please try again.');
+          }
+        }}
+      />
     </div>
   );
 };

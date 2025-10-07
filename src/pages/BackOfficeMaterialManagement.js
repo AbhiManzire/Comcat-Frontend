@@ -133,13 +133,18 @@ const BackOfficeMaterialManagement = () => {
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const files = Array.from(e.dataTransfer.files);
-      toast.success(`${files.length} file(s) uploaded successfully`);
+      processFiles(files);
     }
+  };
+
+  // Common function to process files
+  const processFiles = (files) => {
+    toast.success(`${files.length} file(s) uploaded successfully`);
   };
 
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
-    toast.success(`${files.length} file(s) uploaded successfully`);
+    processFiles(files);
   };
 
   const handleEdit = (row) => {
