@@ -303,7 +303,7 @@ const Dashboard = () => {
             <div className="mb-6 bg-white rounded-lg shadow-lg border-2 border-gray-200">
               <div className="px-6 py-4">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Dashboard Navigation</h3>
-                <nav className="flex flex-wrap gap-2">
+                <nav className="flex flex-wrap gap-7">
                   {tabs.map((tab) => (
                     <button
                       key={tab.id}

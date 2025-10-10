@@ -189,8 +189,8 @@ const ServiceContact = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-medium text-gray-900">Email</h3>
-                    <p className="text-gray-600">info@komacut.com</p>
-                    <p className="text-gray-600">sales@komacut.com</p>
+                    <p className="text-gray-600">info@cutbend.com</p>
+                    <p className="text-gray-600">sales@cutbend.com</p>
                   </div>
                 </div>
 
@@ -228,7 +228,7 @@ const ServiceContact = () => {
 
             <div className="bg-blue-50 rounded-lg p-8">
               <h3 className="text-lg font-semibold text-blue-900 mb-4">
-                Why Choose Komacut?
+                Why Choose Cutbend?
               </h3>
               <ul className="space-y-2 text-blue-800">
                 <li>• 20+ years of manufacturing experience</li>

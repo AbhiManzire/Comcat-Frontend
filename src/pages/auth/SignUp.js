@@ -136,9 +136,9 @@ const SignUp = () => {
           <div className="flex items-center justify-between ">
             {/* <div className="flex items-center">
               <div className="h-8 w-8 bg-green-600 rounded flex items-center justify-center">
-                <span className="text-white font-bold text-sm">K</span>
+                <span className="text-white font-bold text-sm">C</span>
               </div>
-              <span className="ml-2 text-xl font-bold text-gray-900">KOMACUT</span>
+              <span className="ml-2 text-xl font-bold text-gray-900">CUTBEND</span>
             </div> */}
             {/* <div className="flex items-center space-x-4">
               <select className="text-sm border-none bg-transparent focus:outline-none text-gray-700">
@@ -416,7 +416,7 @@ const SignUp = () => {
               </div>
             </div>
             <p className="text-gray-700 italic mb-6 leading-relaxed text-sm">
-              "We have been working with the Komacut platform since its launch and have been very impressed with the quality of the fabrication, the lead times and ease of use of the platform."
+              "We have been working with the Cutbend platform since its launch and have been very impressed with the quality of the fabrication, the lead times and ease of use of the platform."
             </p>
             <p className="text-gray-600 text-sm font-medium">
               Jonathan D.<br />

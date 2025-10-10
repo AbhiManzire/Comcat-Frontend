@@ -82,7 +82,7 @@ const CustomPaymentModal = ({ isOpen, onClose, quotation, onPaymentSuccess }) =>
                   />
                 </div>
                 <div className="text-sm text-gray-600">
-                  <p><strong>UPI ID:</strong> komacut@paytm</p>
+                  <p><strong>UPI ID:</strong> cutbend@paytm</p>
                   <p><strong>Amount:</strong> ₹{quotation?.totalAmount || 0}</p>
                 </div>
               </div>

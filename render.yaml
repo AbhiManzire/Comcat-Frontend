@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: komacut-frontend
+    name: cutbend-frontend
     env: static
     plan: free
     buildCommand: npm install && npm run build:production
@@ -9,6 +9,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: REACT_APP_API_URL
-        value: https://comcat-backend-1.onrender.com/api
+        value: https://cutbend-backend.onrender.com/api
       - key: REACT_APP_CLIENT_URL
-        value: https://comcat-frontends.onrender.com
+        value: https://cutbend-frontend.onrender.com

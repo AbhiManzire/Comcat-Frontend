@@ -432,8 +432,12 @@ const InquiryDetail = () => {
             <div className="bg-white shadow rounded-lg p-6 mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Technical Specifications</h3>
             <div className="overflow-x-auto border border-gray-200 rounded-lg">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <div className="max-h-96 overflow-y-auto" style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#d1d5db #f3f4f6'
+              }}>
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px]">
                       <div className="flex items-center">
@@ -484,8 +488,8 @@ const InquiryDetail = () => {
                       </div>
                     </th>
                   </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
                   {inquiry.specifications && inquiry.specifications.length > 0 ? (
                     inquiry.specifications.map((spec, index) => (
                       <tr key={index} className="hover:bg-gray-50">
@@ -525,8 +529,9 @@ const InquiryDetail = () => {
                       </td>
                     </tr>
                   )}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
           )}

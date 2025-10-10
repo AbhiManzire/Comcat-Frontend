@@ -373,12 +373,13 @@ const BackOfficeDashboard = () => {
                 <h3 className="text-lg font-medium text-gray-900">Pending Inquiries</h3>
                 <p className="text-sm text-gray-600 mt-1">Review and create quotations for customer inquiries</p>
               </div>
-              <div className="overflow-x-auto max-h-96 overflow-y-auto" style={{
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#d1d5db #f3f4f6'
-              }}>
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <div className="max-h-96 overflow-y-auto" style={{
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#d1d5db #f3f4f6'
+                }}>
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         INQUIRY
@@ -402,8 +403,8 @@ const BackOfficeDashboard = () => {
                         ACTIONS
                       </th>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
                     {pendingInquiries.map((inquiry) => (
                       <tr key={inquiry.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -482,8 +483,9 @@ const BackOfficeDashboard = () => {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -494,12 +496,13 @@ const BackOfficeDashboard = () => {
                 <h3 className="text-lg font-medium text-gray-900">Quotations</h3>
                 <p className="text-sm text-gray-600 mt-1">Manage customer quotations and pricing</p>
               </div>
-              <div className="overflow-x-auto max-h-96 overflow-y-auto" style={{
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#d1d5db #f3f4f6'
-              }}>
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <div className="max-h-96 overflow-y-auto" style={{
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#d1d5db #f3f4f6'
+                }}>
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Inquiry ID
@@ -520,8 +523,8 @@ const BackOfficeDashboard = () => {
                         Actions
                       </th>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
                     {quotations.map((quotation) => (
                       <tr key={quotation.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -575,8 +578,9 @@ const BackOfficeDashboard = () => {
                         </td>
                       </tr>
                     )}
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -587,12 +591,13 @@ const BackOfficeDashboard = () => {
                 <h3 className="text-lg font-medium text-gray-900">Orders</h3>
                 <p className="text-sm text-gray-600 mt-1">Manage production orders and tracking</p>
               </div>
-              <div className="overflow-x-auto max-h-96 overflow-y-auto" style={{
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#d1d5db #f3f4f6'
-              }}>
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto">
+                <div className="max-h-96 overflow-y-auto" style={{
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#d1d5db #f3f4f6'
+                }}>
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Order ID
@@ -613,8 +618,8 @@ const BackOfficeDashboard = () => {
                         Actions
                       </th>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
                     {orders.map((order) => (
                       <tr key={order.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -660,8 +665,9 @@ const BackOfficeDashboard = () => {
                       </td>
                     </tr>
                     )}
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

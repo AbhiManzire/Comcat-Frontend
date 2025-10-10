@@ -64,19 +64,60 @@ const NewInquiry = () => {
       }
       
       // Process ALL files for the table
-      const processedFiles = validFiles.map((file, index) => ({
-        id: `file_${Date.now()}_${index}`,
-        name: file.name,
-        partRef: file.name,
-        material: 'Zintec',
-        thickness: '1.5',
-        grade: 'Grade A',
-        remark: 'No remarks',
-        quantity: 1,
-        createdAt: new Date().toISOString(),
-        file: file,
-        fileType: file.name.split('.').pop().toLowerCase()
-      }));
+      const processedFiles = validFiles.map((file, index) => {
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+        const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+        
+        // Generate meaningful default remark based on file type
+        let defaultRemark = '';
+        const remarkOptions = [
+          'Standard manufacturing',
+          'High precision required',
+          'Surface finish important',
+          'Tight tolerance parts',
+          'Assembly component',
+          'Prototype part',
+          'Production ready',
+          'Custom specifications',
+          'Quality critical',
+          'Fast delivery needed'
+        ];
+        
+        switch(fileExtension) {
+          case 'pdf':
+            defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
+            break;
+          case 'dwg':
+            defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
+            break;
+          case 'dxf':
+            defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
+            break;
+          case 'zip':
+            defaultRemark = 'Multiple files package';
+            break;
+          case 'xlsx':
+          case 'xls':
+            defaultRemark = 'Material specifications';
+            break;
+          default:
+            defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
+        }
+        
+        return {
+          id: `file_${Date.now()}_${index}`,
+          name: file.name,
+          partRef: file.name,
+          material: 'Zintec',
+          thickness: '1.5',
+          grade: 'Grade A',
+          remark: defaultRemark,
+          quantity: 1,
+          createdAt: new Date().toISOString(),
+          file: file,
+          fileType: fileExtension
+        };
+      });
       
       setPdfFiles(prev => {
         const newFiles = [...prev, ...processedFiles];
@@ -108,19 +149,60 @@ const NewInquiry = () => {
     }
     
     // Process ALL files for the table (not just PDFs)
-    const processedFiles = validFiles.map((file, index) => ({
-      id: `file_${Date.now()}_${index}`,
-      name: file.name,
-      partRef: file.name,
-      material: 'Zintec',
-      thickness: '1.5',
-      grade: 'Grade A',
-      remark: 'No remarks',
-      quantity: 1,
-      createdAt: new Date().toISOString(),
-      file: file,
-      fileType: file.name.split('.').pop().toLowerCase()
-    }));
+    const processedFiles = validFiles.map((file, index) => {
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+      const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+      
+      // Generate meaningful default remark based on file type
+      let defaultRemark = '';
+      const remarkOptions = [
+        'Standard manufacturing',
+        'High precision required',
+        'Surface finish important',
+        'Tight tolerance parts',
+        'Assembly component',
+        'Prototype part',
+        'Production ready',
+        'Custom specifications',
+        'Quality critical',
+        'Fast delivery needed'
+      ];
+      
+      switch(fileExtension) {
+        case 'pdf':
+          defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
+          break;
+        case 'dwg':
+          defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
+          break;
+        case 'dxf':
+          defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
+          break;
+        case 'zip':
+          defaultRemark = 'Multiple files package';
+          break;
+        case 'xlsx':
+        case 'xls':
+          defaultRemark = 'Material specifications';
+          break;
+        default:
+          defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
+      }
+      
+      return {
+        id: `file_${Date.now()}_${index}`,
+        name: file.name,
+        partRef: file.name,
+        material: 'Zintec',
+        thickness: '1.5',
+        grade: 'Grade A',
+        remark: defaultRemark,
+        quantity: 1,
+        createdAt: new Date().toISOString(),
+        file: file,
+        fileType: fileExtension
+      };
+    });
     
     setPdfFiles(prev => {
       const newFiles = [...prev, ...processedFiles];

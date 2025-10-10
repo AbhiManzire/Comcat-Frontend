@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { orderAPI, inquiryAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
 const Profile = () => {
@@ -16,12 +17,30 @@ const Profile = () => {
 
   useEffect(() => {
     if (user) {
+      // Format address properly
+      let formattedAddress = '';
+      if (user.address) {
+        if (typeof user.address === 'string') {
+          formattedAddress = user.address;
+        } else if (typeof user.address === 'object') {
+          // Format address object into readable text
+          const addr = user.address;
+          const addressParts = [];
+          if (addr.street) addressParts.push(addr.street);
+          if (addr.city) addressParts.push(addr.city);
+          if (addr.state) addressParts.push(addr.state);
+          if (addr.zipCode) addressParts.push(addr.zipCode);
+          if (addr.country) addressParts.push(addr.country);
+          formattedAddress = addressParts.join(', ');
+        }
+      }
+
       setFormData({
         name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || '',
         email: user.email || '',
         phone: user.phoneNumber || '',
         company: user.companyName || '',
-        address: user.address ? (typeof user.address === 'string' ? user.address : JSON.stringify(user.address)) : ''
+        address: formattedAddress
       });
     }
   }, [user]);
@@ -52,64 +71,81 @@ const Profile = () => {
     }
   };
 
-  // Mock data for orders and inquiries
-  const [orders] = useState([
-    {
-      id: 1,
-      orderNumber: 'ORD-2025-001',
-      status: 'In Production',
-      total: 1250.00,
-      date: '2025-01-10',
-      items: ['Sheet Metal Brackets', 'Custom Panels']
-    },
-    {
-      id: 2,
-      orderNumber: 'ORD-2025-002',
-      status: 'Dispatched',
-      total: 850.00,
-      date: '2025-01-08',
-      items: ['Laser Cut Parts', 'Bent Components']
-    }
-  ]);
+  // Real data for orders and inquiries
+  const [orders, setOrders] = useState([]);
+  const [inquiries, setInquiries] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [inquiriesLoading, setInquiriesLoading] = useState(false);
 
-  const [inquiries] = useState([
-    {
-      id: 1,
-      title: 'Sheet Metal Brackets for Automotive',
-      description: 'Custom sheet metal brackets for automotive assembly line. Need 500 units with specific dimensions.',
-      status: 'quoted',
-      date: '2025-01-15',
-      quoteAmount: 2500.00,
-      files: ['bracket_design.dwg', 'specifications.pdf']
-    },
-    {
-      id: 2,
-      title: 'Laser Cut Panels - Electronics Enclosure',
-      description: 'Precision laser cut panels for electronics enclosure. Material: Stainless steel 304, thickness: 2mm.',
-      status: 'pending',
-      date: '2025-01-12',
-      quoteAmount: null,
-      files: ['enclosure_design.dxf', 'material_specs.pdf']
-    },
-    {
-      id: 3,
-      title: 'Bent Sheet Metal Components',
-      description: 'Various bent sheet metal components for industrial equipment. Multiple parts with different bend angles.',
-      status: 'completed',
-      date: '2025-01-08',
-      quoteAmount: 1800.00,
-      files: ['components_drawing.dwg']
-    },
-    {
-      id: 4,
-      title: 'Custom Fastener Brackets',
-      description: 'Custom brackets for fastener assembly. Need surface finishing and threading.',
-      status: 'in_production',
-      date: '2025-01-05',
-      quoteAmount: 1200.00,
-      files: ['bracket_assembly.zip']
+  // Fetch customer orders
+  const fetchOrders = async () => {
+    if (!user?._id || user?.role !== 'customer') return;
+    
+    try {
+      setOrdersLoading(true);
+      const response = await orderAPI.getCustomerOrders(user._id);
+      
+      if (response.data.success) {
+        const transformedOrders = response.data.orders.map(order => ({
+          id: order._id,
+          orderNumber: order.orderNumber,
+          status: order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' '),
+          total: order.totalAmount,
+          date: new Date(order.createdAt).toISOString().split('T')[0],
+          items: order.parts ? order.parts.map(part => part.name || part.description || 'Part') : ['Custom Parts']
+        }));
+        setOrders(transformedOrders);
+      } else {
+        setOrders([]);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
     }
-  ]);
+  };
+
+  // Fetch customer inquiries
+  const fetchInquiries = async () => {
+    if (!user?._id || user?.role !== 'customer') return;
+    
+    try {
+      setInquiriesLoading(true);
+      const response = await inquiryAPI.getCustomerInquiries();
+      
+      if (response.data.success) {
+        const transformedInquiries = response.data.inquiries.map(inquiry => ({
+          id: inquiry._id,
+          title: inquiry.title || `Inquiry ${inquiry.inquiryNumber}`,
+          description: inquiry.description || inquiry.specialInstructions || 'Custom sheet metal parts inquiry',
+          status: inquiry.status,
+          date: new Date(inquiry.createdAt).toISOString().split('T')[0],
+          quoteAmount: inquiry.quotation ? inquiry.quotation.totalAmount : null,
+          files: inquiry.files ? inquiry.files.map(file => file.originalName || file.filename) : []
+        }));
+        setInquiries(transformedInquiries);
+      } else {
+        setInquiries([]);
+      }
+    } catch (error) {
+      console.error('Error fetching inquiries:', error);
+      setInquiries([]);
+    } finally {
+      setInquiriesLoading(false);
+    }
+  };
+
+  // Fetch data when user changes or tab changes
+  useEffect(() => {
+    if (user?._id && user?.role === 'customer') {
+      if (activeTab === 'orders') {
+        fetchOrders();
+      } else if (activeTab === 'inquiries') {
+        fetchInquiries();
+      }
+    }
+  }, [user, activeTab]);
 
   // Role-based tabs - admin users don't need Order History and Inquiries
   const getTabs = () => {
@@ -281,7 +317,12 @@ const Profile = () => {
             {activeTab === 'orders' && (
               <div className="p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">My Orders</h2>
-                {orders.length > 0 ? (
+                {ordersLoading ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="text-gray-500 mt-2">Loading orders...</p>
+                  </div>
+                ) : orders.length > 0 ? (
                   <div className="max-h-96 overflow-y-auto space-y-4">
                     {orders.map((order) => (
                       <div key={order.id} className="border border-gray-200 rounded-lg p-4">
@@ -299,6 +340,10 @@ const Profile = () => {
                                 ? 'bg-yellow-100 text-yellow-800'
                                 : order.status === 'Dispatched'
                                 ? 'bg-green-100 text-green-800'
+                                : order.status === 'Delivered'
+                                ? 'bg-green-100 text-green-800'
+                                : order.status === 'Confirmed'
+                                ? 'bg-blue-100 text-blue-800'
                                 : 'bg-gray-100 text-gray-800'
                             }`}>
                               {order.status}
@@ -314,6 +359,7 @@ const Profile = () => {
                 ) : (
                   <div className="text-center py-12">
                     <p className="text-gray-500">No orders found.</p>
+                    <p className="text-sm text-gray-400 mt-2">Your orders will appear here once you place them.</p>
                   </div>
                 )}
               </div>
@@ -322,7 +368,12 @@ const Profile = () => {
             {activeTab === 'inquiries' && (
               <div className="p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">My Inquiries</h2>
-                {inquiries.length > 0 ? (
+                {inquiriesLoading ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="text-gray-500 mt-2">Loading inquiries...</p>
+                  </div>
+                ) : inquiries.length > 0 ? (
                   <div className="max-h-96 overflow-y-auto space-y-6">
                     {inquiries.map((inquiry) => (
                       <div key={inquiry.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
@@ -347,44 +398,51 @@ const Profile = () => {
                                 ? 'bg-blue-100 text-blue-800'
                                 : inquiry.status === 'in_production'
                                 ? 'bg-purple-100 text-purple-800'
-                                : 'bg-green-100 text-green-800'
+                                : inquiry.status === 'completed'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-800'
                             }`}>
-                              {inquiry.status === 'in_production' ? 'In Production' : inquiry.status}
+                              {inquiry.status === 'in_production' ? 'In Production' : 
+                               inquiry.status === 'completed' ? 'Completed' :
+                               inquiry.status.charAt(0).toUpperCase() + inquiry.status.slice(1)}
                             </span>
                           </div>
                         </div>
                         
                         {/* Files Section */}
-                        <div className="border-t border-gray-100 pt-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm font-medium text-gray-700">Attached Files:</span>
+                        {inquiry.files && inquiry.files.length > 0 && (
+                          <div className="border-t border-gray-100 pt-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <span className="text-sm font-medium text-gray-700">Attached Files:</span>
+                                <div className="flex space-x-2">
+                                  {inquiry.files.map((file, index) => (
+                                    <span key={index} className="inline-flex items-center px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
+                                      📎 {file}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
                               <div className="flex space-x-2">
-                                {inquiry.files.map((file, index) => (
-                                  <span key={index} className="inline-flex items-center px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
-                                    📎 {file}
-                                  </span>
-                                ))}
+                                <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                                  View Details
+                                </button>
+                                {inquiry.status === 'quoted' && (
+                                  <button className="text-sm text-green-600 hover:text-green-800 font-medium">
+                                    Accept Quote
+                                  </button>
+                                )}
                               </div>
                             </div>
-                            <div className="flex space-x-2">
-                              <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
-                                View Details
-                              </button>
-                              {inquiry.status === 'quoted' && (
-                                <button className="text-sm text-green-600 hover:text-green-800 font-medium">
-                                  Accept Quote
-                                </button>
-                              )}
-                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-12">
                     <p className="text-gray-500">No inquiries found.</p>
+                    <p className="text-sm text-gray-400 mt-2">Your inquiries will appear here once you submit them.</p>
                   </div>
                 )}
               </div>

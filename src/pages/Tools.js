@@ -13,11 +13,11 @@ const Tools = () => {
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">K</span>
+                  <span className="text-white font-bold text-lg">C</span>
                 </div>
               </div>
               <div className="ml-3">
-                <h1 className="text-2xl font-bold text-gray-900">KOMACUT</h1>
+                <h1 className="text-2xl font-bold text-gray-900">CUTBEND</h1>
                 <p className="text-sm text-gray-500">SHEET METAL PARTS ON DEMAND</p>
               </div>
             </div>

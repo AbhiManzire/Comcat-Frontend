@@ -18,7 +18,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
       material: file.material || 'Zintec',
       thickness: file.thickness || '1.5',
       grade: file.grade || '',
-      remark: file.remark || '',
+      remark: file.remark || 'Enter remarks here',
       quantity: file.quantity || 1
     });
   };
@@ -68,16 +68,25 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
 
   return (
     <div className="mt-6 bg-white rounded-lg shadow max-w-full">
-      <div className="px-4 sm:px-6 lg:px-8 pr-6 sm:pr-8 lg:pr-10 xl:pr-16 py-4 border-b border-gray-200">
+      <div className="px-4 py-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900">Uploaded Files</h3>
         <p className="text-sm text-gray-600">Manage your uploaded PDF files and their specifications</p>
       </div>
       
-      <div className="overflow-x-auto px-4 sm:px-6 pr-6 sm:pr-8 lg:pr-10 xl:pr-16 max-w-full table-scrollbar" style={{ minWidth: '100%' }}>
-        <table className="min-w-full divide-y divide-gray-200" style={{ minWidth: '1200px', tableLayout: 'fixed' }}>
+      <div 
+        className={`px-4 max-w-full table-scrollbar ${editingId ? 'overflow-x-auto' : 'overflow-x-hidden'}`} 
+        style={{ minWidth: '100%' }}
+      >
+        <table 
+          className="min-w-full divide-y divide-gray-200" 
+          style={{ 
+            minWidth: editingId ? '1000px' : '800px', 
+            tableLayout: 'fixed' 
+          }}
+        >
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '200px', width: '200px' }}>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '150px' : '120px', width: editingId ? '150px' : '120px' }}>
                 <div className="flex items-center">
                   Part Ref
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,7 +94,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '150px', width: '150px' }}>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '130px' : '100px', width: editingId ? '130px' : '100px' }}>
                 <div className="flex items-center">
                   Material
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,7 +102,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '120px', width: '120px' }}>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '100px' : '80px', width: editingId ? '100px' : '80px' }}>
                 <div className="flex items-center">
                   Thickness
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,7 +110,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '150px', width: '150px' }}>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '130px' : '100px', width: editingId ? '130px' : '100px' }}>
                 <div className="flex items-center">
                   Grade
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,7 +118,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '200px', width: '200px' }}>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '150px' : '120px', width: editingId ? '150px' : '120px' }}>
                 <div className="flex items-center">
                   Remark
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,7 +126,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '100px', width: '100px' }}>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '100px' : '80px', width: editingId ? '100px' : '80px' }}>
                 <div className="flex items-center">
                   Quantity
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,7 +134,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '120px', width: '120px' }}>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '120px' : '100px', width: editingId ? '120px' : '100px' }}>
                 <div className="flex items-center">
                   Created
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,7 +142,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-3 sm:px-4 lg:px-6 pr-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: '120px', width: '120px' }}>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '120px' : '100px', width: editingId ? '120px' : '100px' }}>
                 Actions
               </th>
             </tr>
@@ -146,13 +155,13 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
               return (
                 <tr key={fileId} className="hover:bg-gray-50">
                   {/* Part Ref */}
-                  <td className="px-3 sm:px-4 lg:px-6 py-4 whitespace-nowrap">
+                  <td className="px-2 py-4 whitespace-nowrap">
                     {isEditing ? (
                       <input
                         type="text"
                         value={editingValues.partRef || ''}
                         onChange={(e) => handleInputChange('partRef', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                         style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
                       />
                     ) : (
@@ -175,12 +184,12 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </td>
 
                   {/* Material */}
-                  <td className="px-3 sm:px-4 lg:px-6 py-4 whitespace-nowrap">
+                  <td className="px-2 py-4 whitespace-nowrap">
                     {isEditing ? (
                       <select
                         value={editingValues.material || ''}
                         onChange={(e) => handleInputChange('material', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="Zintec">Zintec</option>
                         <option value="Mild Steel">Mild Steel</option>
@@ -194,12 +203,12 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </td>
 
                   {/* Thickness */}
-                  <td className="px-3 sm:px-4 lg:px-6 py-4 whitespace-nowrap">
+                  <td className="px-2 py-4 whitespace-nowrap">
                     {isEditing ? (
                       <select
                         value={editingValues.thickness || ''}
                         onChange={(e) => handleInputChange('thickness', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
                         <option value="0.5">0.5</option>
                         <option value="1.0">1.0</option>
@@ -216,13 +225,13 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </td>
 
                   {/* Grade */}
-                  <td className="px-3 sm:px-4 lg:px-6 py-4 whitespace-nowrap" style={{ minWidth: '150px', width: '150px' }}>
+                  <td className="px-2 py-4 whitespace-nowrap">
                     {isEditing ? (
                       <select
                         value={editingValues.grade || ''}
                         onChange={(e) => handleInputChange('grade', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        style={{ fontFamily: 'Inter, system-ui, sans-serif', maxWidth: '140px' }}
+                        className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        style={{ fontFamily: 'Inter, system-ui, sans-serif', maxWidth: editingId ? '120px' : '140px' }}
                       >
                         <option value="">Select Grade</option>
                         <option value="Grade A">Grade A</option>
@@ -236,14 +245,14 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </td>
 
                   {/* Remark */}
-                  <td className="px-3 sm:px-4 lg:px-6 py-4 whitespace-nowrap">
+                  <td className="px-2 py-4 whitespace-nowrap">
                     {isEditing ? (
                       <input
                         type="text"
                         value={editingValues.remark || ''}
                         onChange={(e) => handleInputChange('remark', e.target.value)}
-                        placeholder="Enter remark"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        placeholder="Add specific remarks for this part"
+                        className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                         style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
                       />
                     ) : (
@@ -252,14 +261,14 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </td>
 
                   {/* Quantity */}
-                  <td className="px-3 sm:px-4 lg:px-6 py-4 whitespace-nowrap">
+                  <td className="px-2 py-4 whitespace-nowrap">
                     {isEditing ? (
                       <input
                         type="number"
                         min="1"
                         value={editingValues.quantity || 1}
                         onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || 1)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     ) : (
                       <span className="text-sm text-gray-900">{file.quantity || 1}</span>
@@ -267,13 +276,12 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </td>
 
                   {/* Created */}
-                  <td className="px-3 sm:px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(file.createdAt || file.created)}
                   </td>
 
-
                   {/* Actions */}
-                  <td className="px-3 sm:px-4 lg:px-6 pr-3 whitespace-nowrap text-sm font-medium">
+                  <td className="px-2 pr-3 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
                       {isEditing ? (
                         <>
@@ -319,7 +327,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
         </table>
       </div>
       
-      <div className="px-4 sm:px-6 lg:px-8 pr-6 sm:pr-8 lg:pr-10 xl:pr-16 py-4 bg-gray-50 border-t border-gray-200">
+      <div className="px-4 py-4 bg-gray-50 border-t border-gray-200">
         <button
           type="button"
           className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -332,6 +340,3 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
 };
 
 export default PDFFileTable;
-
-
-

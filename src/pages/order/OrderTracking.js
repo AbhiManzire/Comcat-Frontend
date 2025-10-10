@@ -2,19 +2,32 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { orderAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOrderUpdates } from '../../hooks/useWebSocket';
 import toast from 'react-hot-toast';
 
 const OrderTracking = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const { orderData: realTimeOrderData, lastUpdate } = useOrderUpdates(id);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user?._id) {
-    fetchOrder();
+      fetchOrder();
     }
   }, [id, user?._id]);
+
+  // Update order with real-time data
+  useEffect(() => {
+    if (realTimeOrderData && order) {
+      setOrder(prevOrder => ({
+        ...prevOrder,
+        ...realTimeOrderData,
+        tracking: generateTimeline({ ...prevOrder, ...realTimeOrderData })
+      }));
+    }
+  }, [realTimeOrderData, order]);
 
   const fetchOrder = async () => {
     try {
@@ -54,11 +67,25 @@ const OrderTracking = () => {
     const status = orderData.status || 'pending';
     const createdAt = orderData.createdAt ? new Date(orderData.createdAt) : new Date();
     
+    // Helper function to get real timestamp or fallback
+    const getRealTimestamp = (timestamp, fallbackDate) => {
+      if (timestamp) {
+        const date = new Date(timestamp);
+        return {
+          date: date.toISOString().split('T')[0],
+          time: date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        };
+      }
+      return {
+        date: fallbackDate.toISOString().split('T')[0],
+        time: fallbackDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      };
+    };
+
     // Define all 6 steps with their completion status based on order status
     const steps = [
       {
-        date: createdAt.toISOString().split('T')[0],
-        time: createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        ...getRealTimestamp(orderData.createdAt, createdAt),
         status: 'Inquiry Generation', 
         description: 'Customer submitted inquiry with technical specifications and requirements.',
         location: 'Customer Portal',
@@ -68,8 +95,7 @@ const OrderTracking = () => {
         isCurrent: false
       },
       { 
-        date: new Date(createdAt.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        time: '11:30 AM',
+        ...getRealTimestamp(orderData.quotation?.createdAt, new Date(createdAt.getTime() + 24 * 60 * 60 * 1000)),
         status: 'Quotation Preparation', 
         description: 'Back Office reviewed inquiry and prepared detailed quotation with pricing.',
         location: 'Back Office',
@@ -79,8 +105,7 @@ const OrderTracking = () => {
         isCurrent: false
       },
       {
-        date: new Date(createdAt.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        time: '02:15 PM',
+        ...getRealTimestamp(orderData.confirmedAt, new Date(createdAt.getTime() + 2 * 24 * 60 * 60 * 1000)),
         status: 'Customer Response', 
         description: 'Customer accepted the quotation and proceeded to place the order.',
         location: 'Customer Portal',
@@ -90,8 +115,7 @@ const OrderTracking = () => {
         isCurrent: status === 'confirmed'
       },
       {
-        date: new Date(createdAt.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        time: '10:30 AM',
+        ...getRealTimestamp(orderData.payment?.paidAt, new Date(createdAt.getTime() + 3 * 24 * 60 * 60 * 1000)),
         status: 'Payment Process', 
         description: 'Customer completed payment. Order confirmed and payment verified.',
         location: 'Payment Gateway',
@@ -101,8 +125,7 @@ const OrderTracking = () => {
         isCurrent: status === 'in_production'
       },
       {
-        date: new Date(createdAt.getTime() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        time: '08:45 AM',
+        ...getRealTimestamp(orderData.dispatch?.dispatchedAt, new Date(createdAt.getTime() + 4 * 24 * 60 * 60 * 1000)),
         status: 'Order Dispatch', 
         description: 'Order completed and ready for dispatch. Tracking details updated.',
         location: 'Logistics Center',
@@ -112,8 +135,7 @@ const OrderTracking = () => {
         isCurrent: status === 'dispatched'
       },
       {
-        date: new Date(createdAt.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        time: '03:30 PM',
+        ...getRealTimestamp(orderData.dispatch?.actualDelivery, new Date(createdAt.getTime() + 5 * 24 * 60 * 60 * 1000)),
         status: 'Order Delivered',
         description: 'Order successfully delivered to customer. Delivery confirmed.',
         location: 'Customer Location',
@@ -282,8 +304,20 @@ const OrderTracking = () => {
             >
               ← Back to Order Details
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Tracking</h1>
-            <p className="text-lg text-gray-600">Track your order #{order.orderNumber}</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Tracking</h1>
+                <p className="text-lg text-gray-600">Track your order #{order.orderNumber}</p>
+              </div>
+              {lastUpdate && (
+                <div className="text-sm text-gray-500">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span>Last updated: {lastUpdate.toLocaleTimeString()}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Horizontal Timeline Section */}
@@ -343,7 +377,9 @@ const OrderTracking = () => {
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Tracking Number</dt>
-                      <dd className="text-sm text-gray-900 font-mono">{order.trackingNumber}</dd>
+                      <dd className="text-sm text-gray-900 font-mono">
+                        {order.dispatch?.trackingNumber || 'Not available yet'}
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Order Date</dt>
@@ -351,7 +387,14 @@ const OrderTracking = () => {
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Expected Delivery</dt>
-                      <dd className="text-sm text-gray-900">{new Date(order.expectedDelivery).toLocaleDateString()}</dd>
+                      <dd className="text-sm text-gray-900">
+                        {order.dispatch?.estimatedDelivery 
+                          ? new Date(order.dispatch.estimatedDelivery).toLocaleDateString()
+                          : order.production?.estimatedCompletion 
+                          ? new Date(order.production.estimatedCompletion).toLocaleDateString()
+                          : 'TBD'
+                        }
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-sm font-medium text-gray-500">Current Status</dt>
@@ -361,6 +404,28 @@ const OrderTracking = () => {
                         </span>
                       </dd>
                     </div>
+                    {order.dispatch?.courier && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Courier</dt>
+                        <dd className="text-sm text-gray-900">{order.dispatch.courier}</dd>
+                      </div>
+                    )}
+                    {order.dispatch?.dispatchedAt && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Dispatched On</dt>
+                        <dd className="text-sm text-gray-900">
+                          {new Date(order.dispatch.dispatchedAt).toLocaleDateString()}
+                        </dd>
+                      </div>
+                    )}
+                    {order.dispatch?.actualDelivery && (
+                      <div>
+                        <dt className="text-sm font-medium text-gray-500">Delivered On</dt>
+                        <dd className="text-sm text-gray-900">
+                          {new Date(order.dispatch.actualDelivery).toLocaleDateString()}
+                        </dd>
+                      </div>
+                    )}
                   </dl>
                 </div>
               </div>

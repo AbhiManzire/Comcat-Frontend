@@ -84,6 +84,9 @@ export const inquiryAPI = {
   // Get all inquiries for the current user
   getInquiries: (params = {}) => api.get('/inquiry', { params }),
   
+  // Get customer inquiries (for customer profile)
+  getCustomerInquiries: () => api.get('/inquiry/customer'),
+  
   // Get single inquiry by ID
   getInquiry: (id) => api.get(`/inquiry/${id}`),
   
@@ -303,7 +306,10 @@ export const adminAPI = {
   }),
   
   // Update delivery details
-  updateDeliveryDetails: (id, deliveryData) => api.put(`/admin/orders/${id}/delivery`, deliveryData),
+  updateDeliveryDetails: (id, deliveryData) => api.put(`/orders/${id}/delivery-time`, deliveryData),
+  
+  // Update dispatch details
+  updateDispatchDetails: (id, dispatchData) => api.put(`/orders/${id}/dispatch`, dispatchData),
   
   // Get material management data
   getMaterialData: (params = {}) => api.get('/admin/material-data', { params }),
@@ -326,6 +332,9 @@ export const adminAPI = {
       },
     });
   },
+  
+  // Test Email service
+  testEmail: (data) => api.post('/admin/test-email', data),
   
   // Test SMS service
   testSMS: (data) => api.post('/admin/test-sms', data),

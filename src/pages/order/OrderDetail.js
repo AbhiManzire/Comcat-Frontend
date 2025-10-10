@@ -62,7 +62,7 @@ const OrderDetail = () => {
     }
 
     try {
-      const response = await adminAPI.updateOrderStatus(order._id, 'in_production', {
+      const response = await adminAPI.updateDeliveryDetails(order._id, {
         estimatedDelivery: deliveryTime,
         notes: 'Production started with estimated delivery time'
       });
@@ -116,7 +116,7 @@ const OrderDetail = () => {
     }
 
     try {
-      const response = await adminAPI.updateDeliveryDetails(order._id, dispatchData);
+      const response = await adminAPI.updateDispatchDetails(order._id, dispatchData);
 
       if (response.data.success) {
         toast.success('Order dispatched and customer notified');
@@ -517,9 +517,13 @@ const OrderDetail = () => {
             <div className="grid ">
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Order Details</h3>
-                <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg max-h-64 overflow-y-auto overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-300">
-                    <thead className="bg-gray-50">
+                <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                  <div className="max-h-64 overflow-y-auto overflow-x-auto" style={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#d1d5db #f3f4f6'
+                  }}>
+                    <table className="min-w-full divide-y divide-gray-300">
+                      <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Part Reference
@@ -537,8 +541,8 @@ const OrderDetail = () => {
                           Total
                         </th>
                       </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
                       {order.parts?.map((part, index) => (
                         <tr key={index}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -568,8 +572,9 @@ const OrderDetail = () => {
                           ${order.totalAmount?.toFixed(2) || '0.00'}
                         </td>
                       </tr>
-                    </tfoot>
-                  </table>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
               </div>
 

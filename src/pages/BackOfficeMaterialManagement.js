@@ -302,9 +302,9 @@ const BackOfficeMaterialManagement = () => {
           {/* <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
               <div className="h-8 w-8 bg-green-600 rounded flex items-center justify-center">
-                <span className="text-white font-bold text-sm">K</span>
+                <span className="text-white font-bold text-sm">C</span>
               </div>
-              <span className="ml-2 text-xl font-bold text-gray-900">KOMACUT</span>
+              <span className="ml-2 text-xl font-bold text-gray-900">CUTBEND</span>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -388,12 +388,13 @@ const BackOfficeMaterialManagement = () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto max-h-96 overflow-y-auto" style={{
-            scrollbarWidth: 'thin',
-            scrollbarColor: '#d1d5db #f3f4f6'
-          }}>
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="overflow-x-auto">
+            <div className="max-h-96 overflow-y-auto" style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#d1d5db #f3f4f6'
+            }}>
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Material
@@ -411,8 +412,8 @@ const BackOfficeMaterialManagement = () => {
                     Actions
                   </th>
                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
                 {materialData.length > 0 ? (
                   materialData.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50 transition-colors">
@@ -529,8 +530,9 @@ const BackOfficeMaterialManagement = () => {
                     </td>
                   </tr>
                 )}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Action Buttons */}

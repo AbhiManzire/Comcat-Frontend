@@ -2,54 +2,92 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { orderAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import toast from 'react-hot-toast';
 
 const OrderList = () => {
   const { user } = useAuth();
+  const { subscribe, isConnected } = useWebSocket();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
 
   useEffect(() => {
-    console.log('OrderList component mounted, fetching orders...');
     if (user?._id) {
       fetchOrders();
+      
+      // Set up real-time polling for order updates (fallback)
+      const interval = setInterval(() => {
+        if (!isConnected) {
+          fetchOrders();
+        }
+      }, 30000); // Poll every 30 seconds only if WebSocket is not connected
+      
+      return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [user, isConnected]);
+
+  // WebSocket real-time updates
+  useEffect(() => {
+    if (!user?._id) return;
+
+    const unsubscribeOrderUpdate = subscribe('order_update', (data) => {
+      console.log('Order update received:', data);
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order._id === data.data?.orderId 
+            ? { ...order, status: data.data.newStatus, updatedAt: new Date() }
+            : order
+        )
+      );
+      toast.success(`Order ${data.data?.orderNumber} status updated to ${data.data?.newStatus}`);
+    });
+
+    const unsubscribeDispatch = subscribe('dispatch', (data) => {
+      console.log('Dispatch update received:', data);
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order._id === data.data?.orderId 
+            ? { 
+                ...order, 
+                status: 'dispatched',
+                dispatch: data.data,
+                updatedAt: new Date()
+              }
+            : order
+        )
+      );
+      toast.success(`Order ${data.data?.orderNumber} has been dispatched!`);
+    });
+
+    return () => {
+      unsubscribeOrderUpdate();
+      unsubscribeDispatch();
+    };
+  }, [user?._id, subscribe]);
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      console.log('Fetching orders from backend...');
-      console.log('User ID:', user?._id);
-      
       if (!user?._id) {
-        console.log('No user ID available, cannot fetch orders');
         setOrders([]);
         return;
       }
       
       // Use customer-specific API endpoint
       const response = await orderAPI.getCustomerOrders(user._id);
-      console.log('Customer Orders API response:', response);
       
       if (response.data.success) {
-        console.log('Found orders:', response.data.orders);
-        console.log('Setting orders in state...');
         setOrders(response.data.orders);
-        console.log('Orders set successfully');
       } else {
-        console.log('No orders found:', response.data.message);
         setOrders([]);
         toast.error(response.data.message || 'No orders found');
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
-      console.log('Falling back to mock data...');
       
       // Fallback to mock data if API fails
-      console.log('Setting fallback mock data...');
       setOrders([
         {
           _id: '68c519d8988fbbd8c570359d',
@@ -72,7 +110,6 @@ const OrderList = () => {
           createdAt: '2025-09-12T14:05:30.000Z'
         }
       ]);
-      console.log('Mock data set successfully');
       toast.error('Backend connection failed - showing mock data');
     } finally {
       setLoading(false);
@@ -126,8 +163,8 @@ const OrderList = () => {
   };
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.inquiryNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (order.orderNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (order.inquiryNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All Status' || order.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -150,8 +187,18 @@ const OrderList = () => {
         <div className="px-4 py-6 sm:px-0">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
-            <p className="mt-2 text-gray-600">Track and manage your orders</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
+                <p className="mt-2 text-gray-600">Track and manage your orders</p>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="text-sm text-gray-600">
+                  {isConnected ? 'Real-time updates active' : 'Real-time updates offline'}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Search and Filter Bar */}
@@ -184,6 +231,12 @@ const OrderList = () => {
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm appearance-none"
+                    style={{ 
+                      WebkitAppearance: 'none', 
+                      MozAppearance: 'none',
+                      appearance: 'none',
+                      backgroundImage: 'none'
+                    }}
                   >
                     <option>All Status</option>
                     <option>Delivered</option>
@@ -203,9 +256,13 @@ const OrderList = () => {
 
            {/* Orders Table */}
            <div className="bg-white shadow rounded-lg overflow-hidden">
-             <div className="overflow-x-auto max-h-96 overflow-y-auto">
-               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+             <div className="overflow-x-auto">
+               <div className="max-h-96 overflow-y-auto" style={{
+                 scrollbarWidth: 'thin',
+                 scrollbarColor: '#d1d5db #f3f4f6'
+               }}>
+                 <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ORDER
@@ -223,20 +280,28 @@ const OrderList = () => {
                       DATE
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      DELIVERY
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ACTIONS
                     </th>
                   </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {console.log('Rendering orders:', filteredOrders)}
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
                   {filteredOrders.map((order) => (
                     <tr key={order._id || order.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-bold text-gray-900">
-                          {order.orderNumber || 'N/A'}
+                          {typeof order.orderNumber === 'string' ? order.orderNumber : 
+                           typeof order.orderNumber === 'object' && order.orderNumber?.orderNumber ? order.orderNumber.orderNumber :
+                           'N/A'}
                         </div>
                         <div className="text-sm text-gray-500">
-                          Inquiry: {order.inquiryNumber || 'N/A'}
+                          Inquiry: {typeof order.inquiryNumber === 'string' ? order.inquiryNumber : 
+                                   typeof order.inquiryId === 'string' ? order.inquiryId :
+                                   typeof order.inquiry === 'string' ? order.inquiry :
+                                   typeof order.inquiry === 'object' && order.inquiry?.inquiryNumber ? order.inquiry.inquiryNumber :
+                                   'N/A'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -279,7 +344,7 @@ const OrderList = () => {
                               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                             </svg>
                           )}
-                          {order.status || 'N/A'}
+                          {typeof order.status === 'string' ? order.status : 'N/A'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -319,11 +384,20 @@ const OrderList = () => {
                               <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                             </svg>
                           )}
-                          {order.payment?.status || order.paymentStatus || 'N/A'}
+                          {typeof order.payment?.status === 'string' ? order.payment.status :
+                           typeof order.paymentStatus === 'string' ? order.paymentStatus : 'N/A'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {order.date || order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {order.dispatch?.estimatedDelivery 
+                          ? new Date(order.dispatch.estimatedDelivery).toLocaleDateString()
+                          : order.production?.estimatedCompletion 
+                          ? new Date(order.production.estimatedCompletion).toLocaleDateString()
+                          : 'TBD'
+                        }
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <Link
@@ -339,8 +413,9 @@ const OrderList = () => {
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
