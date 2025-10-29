@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { inquiryAPI, handleApiError, handleApiSuccess } from '../../services/api';
 import toast from 'react-hot-toast';
 import PDFFileTable from '../../components/PDFFileTable';
 import UserInfoDisplay from '../../components/UserInfoDisplay';
+import axios from 'axios';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const NewInquiry = () => {
   const [formData, setFormData] = useState({
@@ -20,8 +23,57 @@ const NewInquiry = () => {
   const [pdfFiles, setPdfFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [materialData, setMaterialData] = useState([]);
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Fetch material data from admin on component mount
+  useEffect(() => {
+    fetchMaterialData();
+  }, []);
+
+  const fetchMaterialData = async () => {
+    try {
+      console.log('🔍 Fetching material data from admin...');
+      console.log('API URL:', `${API_URL}/api/admin/materials`);
+      
+      const response = await axios.get(`${API_URL}/api/admin/materials`);
+      console.log('✅ API Response:', response.data);
+      
+      if (response.data.success && response.data.materialData) {
+        const activeMaterials = response.data.materialData.filter(m => m.status === 'Active');
+        console.log('📊 Total materials from DB:', response.data.materialData.length);
+        console.log('✓ Active materials:', activeMaterials.length);
+        console.log('📦 Material data:', activeMaterials);
+        
+        if (activeMaterials.length > 0) {
+          setMaterialData(activeMaterials);
+          // Success - materials loaded (no toast needed)
+          console.log('✅ Materials loaded:', activeMaterials.length);
+          console.log('✅ Available materials:', activeMaterials.map(m => m.material).join(', '));
+        } else {
+          console.warn('⚠️ No active materials in database!');
+          setMaterialData([]);
+          toast.error('⚠️ No materials found! Please ask admin to add materials first.', {
+            duration: 5000
+          });
+        }
+      } else {
+        console.warn('⚠️ No material data in response');
+        setMaterialData([]);
+        toast.error('⚠️ No materials in database! Please contact admin.', {
+          duration: 5000
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error fetching material data:', error);
+      console.error('Error details:', error.response?.data);
+      toast.error('❌ Failed to load materials. Please check backend server.', {
+        duration: 5000
+      });
+      setMaterialData([]);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({
@@ -63,61 +115,30 @@ const NewInquiry = () => {
         return;
       }
       
-      // Process ALL files for the table
-      const processedFiles = validFiles.map((file, index) => {
-        const fileExtension = file.name.split('.').pop().toLowerCase();
-        const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
-        
-        // Generate meaningful default remark based on file type
-        let defaultRemark = '';
-        const remarkOptions = [
-          'Standard manufacturing',
-          'High precision required',
-          'Surface finish important',
-          'Tight tolerance parts',
-          'Assembly component',
-          'Prototype part',
-          'Production ready',
-          'Custom specifications',
-          'Quality critical',
-          'Fast delivery needed'
-        ];
-        
-        switch(fileExtension) {
-          case 'pdf':
-            defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
-            break;
-          case 'dwg':
-            defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
-            break;
-          case 'dxf':
-            defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
-            break;
-          case 'zip':
-            defaultRemark = 'Multiple files package';
-            break;
-          case 'xlsx':
-          case 'xls':
-            defaultRemark = 'Material specifications';
-            break;
-          default:
-            defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
-        }
-        
-        return {
-          id: `file_${Date.now()}_${index}`,
-          name: file.name,
-          partRef: file.name,
-          material: 'Zintec',
-          thickness: '1.5',
-          grade: 'Grade A',
-          remark: defaultRemark,
-          quantity: 1,
-          createdAt: new Date().toISOString(),
-          file: file,
-          fileType: fileExtension
-        };
-      });
+      // Process ALL files for the table - use admin's material data
+      if (materialData.length === 0) {
+        toast.error('⚠️ No materials available! Please ask admin to add materials first.');
+        return;
+      }
+      
+      const defaultMaterial = materialData[0];
+      
+      console.log('🔧 Using default material for dropped files:', defaultMaterial);
+      console.log('📦 Total available materials:', materialData.length);
+      
+      const processedFiles = validFiles.map((file, index) => ({
+        id: `file_${Date.now()}_${index}`,
+        name: file.name,
+        partRef: file.name,
+        material: defaultMaterial.material,
+        thickness: defaultMaterial.thickness,
+        grade: defaultMaterial.grade || '',
+        remarks: '', // Empty by default - user must fill
+        quantity: 1,
+        createdAt: new Date().toISOString(),
+        file: file,
+        fileType: file.name.split('.').pop().toLowerCase()
+      }));
       
       setPdfFiles(prev => {
         const newFiles = [...prev, ...processedFiles];
@@ -148,61 +169,30 @@ const NewInquiry = () => {
       return;
     }
     
-    // Process ALL files for the table (not just PDFs)
-    const processedFiles = validFiles.map((file, index) => {
-      const fileExtension = file.name.split('.').pop().toLowerCase();
-      const fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
-      
-      // Generate meaningful default remark based on file type
-      let defaultRemark = '';
-      const remarkOptions = [
-        'Standard manufacturing',
-        'High precision required',
-        'Surface finish important',
-        'Tight tolerance parts',
-        'Assembly component',
-        'Prototype part',
-        'Production ready',
-        'Custom specifications',
-        'Quality critical',
-        'Fast delivery needed'
-      ];
-      
-      switch(fileExtension) {
-        case 'pdf':
-          defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
-          break;
-        case 'dwg':
-          defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
-          break;
-        case 'dxf':
-          defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
-          break;
-        case 'zip':
-          defaultRemark = 'Multiple files package';
-          break;
-        case 'xlsx':
-        case 'xls':
-          defaultRemark = 'Material specifications';
-          break;
-        default:
-          defaultRemark = remarkOptions[Math.floor(Math.random() * remarkOptions.length)];
-      }
-      
-      return {
-        id: `file_${Date.now()}_${index}`,
-        name: file.name,
-        partRef: file.name,
-        material: 'Zintec',
-        thickness: '1.5',
-        grade: 'Grade A',
-        remark: defaultRemark,
-        quantity: 1,
-        createdAt: new Date().toISOString(),
-        file: file,
-        fileType: fileExtension
-      };
-    });
+    // Process ALL files for the table (not just PDFs) - use admin's material data
+    if (materialData.length === 0) {
+      toast.error('⚠️ No materials available! Please ask admin to add materials first.');
+      return;
+    }
+    
+    const defaultMaterial = materialData[0];
+    
+    console.log('🔧 Using default material for files:', defaultMaterial);
+    console.log('📦 Total available materials:', materialData.length);
+    
+    const processedFiles = validFiles.map((file, index) => ({
+      id: `file_${Date.now()}_${index}`,
+      name: file.name,
+      partRef: file.name,
+      material: defaultMaterial.material,
+      thickness: defaultMaterial.thickness,
+      grade: defaultMaterial.grade || '',
+      remarks: '', // Empty by default - user must fill
+      quantity: 1,
+      createdAt: new Date().toISOString(),
+      file: file,
+      fileType: file.name.split('.').pop().toLowerCase()
+    }));
     
     setPdfFiles(prev => {
       const newFiles = [...prev, ...processedFiles];
@@ -246,6 +236,20 @@ const NewInquiry = () => {
     
     if (pdfFiles.length === 0) {
       toast.error('Please upload at least one file');
+      return;
+    }
+    
+    // Validate that all files have remarks and quantity
+    const filesWithoutRemarks = pdfFiles.filter(file => !file.remarks || file.remarks.trim() === '');
+    const filesWithoutQuantity = pdfFiles.filter(file => !file.quantity || file.quantity < 1);
+    
+    if (filesWithoutRemarks.length > 0) {
+      toast.error(`Please add remarks for all files. ${filesWithoutRemarks.length} file(s) missing remarks.`);
+      return;
+    }
+    
+    if (filesWithoutQuantity.length > 0) {
+      toast.error(`Please add valid quantity for all files. ${filesWithoutQuantity.length} file(s) have invalid quantity.`);
       return;
     }
     
@@ -436,6 +440,7 @@ const NewInquiry = () => {
                   onUpdateFile={handleUpdatePdfFile}
                   onDeleteFile={handleDeletePdfFile}
                   showCreatedColumn={false}
+                  materialData={materialData}
                 />
               ) : null}
             </div>

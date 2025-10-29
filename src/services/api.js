@@ -107,7 +107,7 @@ export const inquiryAPI = {
     formData.append('thickness', inquiryData.thickness || '');
     formData.append('grade', inquiryData.grade || '');
     formData.append('quantity', inquiryData.quantity || '');
-    formData.append('remark', inquiryData.remark || '');
+    formData.append('remarks', inquiryData.remarks || '');
     
     // Add required fields for backend validation
     // Convert file metadata to parts array
@@ -133,7 +133,7 @@ export const inquiryAPI = {
     formData.append('deliveryAddress', JSON.stringify(deliveryAddress));
     
     // Add special instructions
-    formData.append('specialInstructions', inquiryData.remark || '');
+    formData.append('specialInstructions', inquiryData.remarks || '');
     
     // Add files
     if (inquiryData.files && inquiryData.files.length > 0) {
@@ -188,8 +188,18 @@ export const quotationAPI = {
   // Create quotation (Admin)
   createQuotation: (quotationData) => api.post('/quotation/create', quotationData),
   
+  // Upload quotation PDF (Admin)
+  uploadQuotation: (formData) => api.post('/quotation/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  }),
+  
   // Update quotation (Admin)
   updateQuotation: (id, data) => api.put(`/quotation/${id}`, data),
+  
+  // Update quotation pricing (Admin)
+  updateQuotationPricing: (id, items) => api.put(`/quotation/${id}/pricing`, { items }),
   
   // Send quotation to customer (Admin)
   sendQuotation: (id) => api.post(`/quotation/${id}/send`),

@@ -89,9 +89,13 @@ const QuotationPayment = () => {
 
         const response = await orderAPI.createOrder(quotation._id, orderData);
         
+        console.log('Order creation response:', response.data);
+        
         if (response.data.success) {
+          const orderId = response.data.order.id || response.data.order._id;
+          console.log('Navigating to order:', orderId);
           toast.success('Order created successfully! Payment will be collected on delivery.');
-          navigate(`/order/${response.data.order.id}`);
+          navigate(`/order/${orderId}`);
         } else {
           toast.error(response.data.message || 'Failed to create order');
         }
@@ -309,9 +313,13 @@ const QuotationPayment = () => {
 
             const response = await orderAPI.createOrder(quotation._id, orderData);
             
+            console.log('Direct payment order creation response:', response.data);
+            
             if (response.data.success) {
+              const orderId = response.data.order.id || response.data.order._id;
+              console.log('Navigating to order:', orderId);
               toast.success('Order created successfully! Payment details sent to your registered number.');
-              navigate(`/order/${response.data.order.id}`);
+              navigate(`/order/${orderId}`);
             } else {
               toast.error(response.data.message || 'Failed to create order');
             }

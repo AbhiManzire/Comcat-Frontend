@@ -6,10 +6,48 @@ import {
   XMarkIcon,
   DocumentIcon
 } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
 
-const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
+const PDFFileTable = ({ files, onUpdateFile, onDeleteFile, materialData = [] }) => {
   const [editingId, setEditingId] = useState(null);
   const [editingValues, setEditingValues] = useState({});
+
+  // Debug: Log material data received
+  console.log('📦 PDFFileTable - Material data received:', materialData);
+  console.log('📊 Material data length:', materialData.length);
+
+  // Extract unique materials from materialData
+  const availableMaterials = materialData.length > 0 
+    ? [...new Set(materialData.map(m => m.material))]
+    : ['Zintec', 'Mild Steel', 'Stainless Steel', 'Aluminum', 'Galvanized Steel'];
+  
+  console.log('🎯 Available materials for dropdown:', availableMaterials);
+  
+  // Get available thicknesses and grades for currently selected material
+  const getOptionsForMaterial = (selectedMaterial) => {
+    if (materialData.length === 0) {
+      return {
+        thicknesses: ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0', '4.0', '5.0'],
+        grades: ['Grade A', 'Grade B', 'Grade C', 'Grade D']
+      };
+    }
+    
+    // Find all entries with this material
+    const materialEntries = materialData.filter(m => m.material === selectedMaterial);
+    
+    if (materialEntries.length === 0) {
+      // Fallback to all available options
+      return {
+        thicknesses: [...new Set(materialData.map(m => m.thickness))],
+        grades: [...new Set(materialData.map(m => m.grade).filter(g => g))]
+      };
+    }
+    
+    return {
+      thicknesses: [...new Set(materialEntries.map(m => m.thickness))],
+      grades: [...new Set(materialEntries.map(m => m.grade).filter(g => g))]
+    };
+  };
 
   const handleEdit = (fileId, file) => {
     setEditingId(fileId);
@@ -18,15 +56,27 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
       material: file.material || 'Zintec',
       thickness: file.thickness || '1.5',
       grade: file.grade || '',
-      remark: file.remark || 'Enter remarks here',
+      remarks: file.remarks || 'As per drawing', // Default 15 char message
       quantity: file.quantity || 1
     });
   };
 
   const handleSave = (fileId) => {
+    // Validate remarks and quantity before saving
+    if (!editingValues.remarks || editingValues.remarks.trim() === '') {
+      toast.error('Please enter remarks before saving');
+      return;
+    }
+    
+    if (!editingValues.quantity || editingValues.quantity < 1) {
+      toast.error('Please enter a valid quantity (minimum 1)');
+      return;
+    }
+    
     onUpdateFile(fileId, editingValues);
     setEditingId(null);
     setEditingValues({});
+    toast.success('File details updated successfully');
   };
 
   const handleCancel = () => {
@@ -43,6 +93,22 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
   const handleInputChange = (field, value) => {
     // Ensure proper character encoding for text fields
     const processedValue = typeof value === 'string' ? value.trim() : value;
+    
+    // If material is changed, auto-populate thickness and grade
+    if (field === 'material' && materialData.length > 0) {
+      const selectedMaterialEntry = materialData.find(m => m.material === value);
+      
+      if (selectedMaterialEntry) {
+        setEditingValues(prev => ({
+          ...prev,
+          material: value,
+          thickness: selectedMaterialEntry.thickness,
+          grade: selectedMaterialEntry.grade || prev.grade
+        }));
+        return;
+      }
+    }
+    
     setEditingValues(prev => ({
       ...prev,
       [field]: processedValue
@@ -67,34 +133,40 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
   }
 
   return (
-    <div className="mt-6 bg-white rounded-lg shadow max-w-full">
-      <div className="px-4 py-4 border-b border-gray-200">
+    <div className="mt-6 bg-white rounded-lg shadow">
+      <style jsx>{`
+        .custom-select-scroll {
+          max-height: 38px;
+        }
+        .custom-select-scroll option {
+          padding: 8px;
+        }
+      `}</style>
+      <div className="px-6 py-4 border-b border-gray-200">
         <h3 className="text-lg font-semibold text-gray-900">Uploaded Files</h3>
-        <p className="text-sm text-gray-600">Manage your uploaded PDF files and their specifications</p>
+        <p className="text-sm text-gray-600">Manage your uploaded files and their specifications</p>
       </div>
       
-      <div 
-        className={`px-4 max-w-full table-scrollbar ${editingId ? 'overflow-x-auto' : 'overflow-x-hidden'}`} 
-        style={{ minWidth: '100%' }}
-      >
+      <div className="overflow-x-auto">
+        <div className="inline-block min-w-full align-middle">
+          <div className="overflow-hidden">
         <table 
-          className="min-w-full divide-y divide-gray-200" 
+          className="w-full divide-y divide-gray-200" 
           style={{ 
-            minWidth: editingId ? '1000px' : '800px', 
-            tableLayout: 'fixed' 
+            tableLayout: 'fixed'
           }}
         >
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '150px' : '120px', width: editingId ? '150px' : '120px' }}>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '18%' }}>
                 <div className="flex items-center">
-                  Part Ref
+                  Part Name
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
               </th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '130px' : '100px', width: editingId ? '130px' : '100px' }}>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '13%' }}>
                 <div className="flex items-center">
                   Material
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,7 +174,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '100px' : '80px', width: editingId ? '100px' : '80px' }}>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '10%' }}>
                 <div className="flex items-center">
                   Thickness
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,7 +182,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '130px' : '100px', width: editingId ? '130px' : '100px' }}>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '11%' }}>
                 <div className="flex items-center">
                   Grade
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,7 +190,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '150px' : '120px', width: editingId ? '150px' : '120px' }}>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '18%' }}>
                 <div className="flex items-center">
                   Remark
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,7 +198,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '100px' : '80px', width: editingId ? '100px' : '80px' }}>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '8%' }}>
                 <div className="flex items-center">
                   Quantity
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -134,7 +206,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '120px' : '100px', width: editingId ? '120px' : '100px' }}>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '12%' }}>
                 <div className="flex items-center">
                   Created
                   <svg className="ml-1 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,7 +214,7 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </svg>
                 </div>
               </th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ minWidth: editingId ? '120px' : '100px', width: editingId ? '120px' : '100px' }}>
+              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '10%' }}>
                 Actions
               </th>
             </tr>
@@ -155,89 +227,74 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
               return (
                 <tr key={fileId} className="hover:bg-gray-50">
                   {/* Part Ref */}
-                  <td className="px-2 py-4 whitespace-nowrap">
+                  <td className="px-3 py-4">
                     {isEditing ? (
                       <input
                         type="text"
                         value={editingValues.partRef || ''}
                         onChange={(e) => handleInputChange('partRef', e.target.value)}
-                        className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                         style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
                       />
                     ) : (
                       <div className="flex items-center">
-                        <DocumentIcon className="h-5 w-5 text-gray-400 mr-2" />
+                        <DocumentIcon className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
                         <span 
-                          className="text-sm font-medium text-gray-900" 
+                          className="text-sm font-medium text-gray-900 truncate" 
                           title={file.partRef || file.name}
                         >
-                          {(() => {
-                            const fileName = file.partRef || file.name || 'N/A';
-                            if (fileName.length > 10) {
-                              return fileName.substring(0, 10) + '...';
-                            }
-                            return fileName;
-                          })()}
+                          {file.partRef || file.name || 'N/A'}
                         </span>
                       </div>
                     )}
                   </td>
 
                   {/* Material */}
-                  <td className="px-2 py-4 whitespace-nowrap">
+                  <td className="px-3 py-4">
                     {isEditing ? (
                       <select
                         value={editingValues.material || ''}
                         onChange={(e) => handleInputChange('material', e.target.value)}
-                        className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm custom-select-scroll"
                       >
-                        <option value="Zintec">Zintec</option>
-                        <option value="Mild Steel">Mild Steel</option>
-                        <option value="Stainless Steel">Stainless Steel</option>
-                        <option value="Aluminum">Aluminum</option>
-                        <option value="Galvanized Steel">Galvanized Steel</option>
+                        {availableMaterials.map((material) => (
+                          <option key={material} value={material}>{material}</option>
+                        ))}
                       </select>
                     ) : (
-                      <span className="text-sm text-gray-900">{file.material || 'Zintec'}</span>
+                      <span className="text-sm text-gray-900">{file.material || availableMaterials[0]}</span>
                     )}
                   </td>
 
                   {/* Thickness */}
-                  <td className="px-2 py-4 whitespace-nowrap">
+                  <td className="px-3 py-4">
                     {isEditing ? (
                       <select
                         value={editingValues.thickness || ''}
                         onChange={(e) => handleInputChange('thickness', e.target.value)}
-                        className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm custom-select-scroll"
                       >
-                        <option value="0.5">0.5</option>
-                        <option value="1.0">1.0</option>
-                        <option value="1.5">1.5</option>
-                        <option value="2.0">2.0</option>
-                        <option value="2.5">2.5</option>
-                        <option value="3.0">3.0</option>
-                        <option value="4.0">4.0</option>
-                        <option value="5.0">5.0</option>
+                        {getOptionsForMaterial(editingValues.material).thicknesses.map((thickness) => (
+                          <option key={thickness} value={thickness}>{thickness}mm</option>
+                        ))}
                       </select>
                     ) : (
-                      <span className="text-sm text-gray-900">{file.thickness || '1.5'}</span>
+                      <span className="text-sm text-gray-900">{file.thickness || '1.5'}mm</span>
                     )}
                   </td>
 
                   {/* Grade */}
-                  <td className="px-2 py-4 whitespace-nowrap">
+                  <td className="px-3 py-4">
                     {isEditing ? (
                       <select
                         value={editingValues.grade || ''}
                         onChange={(e) => handleInputChange('grade', e.target.value)}
-                        className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        style={{ fontFamily: 'Inter, system-ui, sans-serif', maxWidth: editingId ? '120px' : '140px' }}
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm custom-select-scroll"
                       >
                         <option value="">Select Grade</option>
-                        <option value="Grade A">Grade A</option>
-                        <option value="Grade B">Grade B</option>
-                        <option value="Grade C">Grade C</option>
-                        <option value="Grade D">Grade D</option>
+                        {getOptionsForMaterial(editingValues.material).grades.map((grade) => (
+                          <option key={grade} value={grade}>{grade}</option>
+                        ))}
                       </select>
                     ) : (
                       <span className="text-sm text-gray-900">{file.grade || '-'}</span>
@@ -245,43 +302,80 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
                   </td>
 
                   {/* Remark */}
-                  <td className="px-2 py-4 whitespace-nowrap">
+                  <td className="px-3 py-4">
                     {isEditing ? (
-                      <input
-                        type="text"
-                        value={editingValues.remark || ''}
-                        onChange={(e) => handleInputChange('remark', e.target.value)}
-                        placeholder="Add specific remarks for this part"
-                        className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={editingValues.remarks || ''}
+                          onChange={(e) => handleInputChange('remarks', e.target.value)}
+                          placeholder="Enter remarks here..."
+                          required
+                          className={`w-full px-2 py-1.5 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${
+                            !editingValues.remarks || editingValues.remarks.trim() === '' 
+                              ? 'border-red-300 bg-red-50' 
+                              : 'border-gray-300'
+                          }`}
+                        />
+                        {(!editingValues.remarks || editingValues.remarks.trim() === '') && (
+                          <span className="text-xs text-red-600 mt-0.5 block">Required</span>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-sm text-gray-900">{file.remark || '-'}</span>
+                      <span 
+                        className={`text-sm truncate block ${
+                          !file.remarks || file.remarks.trim() === '' 
+                            ? 'text-red-600 italic' 
+                            : 'text-gray-900'
+                        }`}
+                        title={file.remarks || 'Remarks required'}
+                      >
+                        {file.remarks && file.remarks.trim() !== '' ? file.remarks : 'No remarks added ⚠️'}
+                      </span>
                     )}
                   </td>
 
                   {/* Quantity */}
-                  <td className="px-2 py-4 whitespace-nowrap">
+                  <td className="px-3 py-4">
                     {isEditing ? (
-                      <input
-                        type="number"
-                        min="1"
-                        value={editingValues.quantity || 1}
-                        onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || 1)}
-                        className="w-full px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="1"
+                          value={editingValues.quantity || ''}
+                          onChange={(e) => handleInputChange('quantity', parseInt(e.target.value) || '')}
+                          placeholder="Qty"
+                          required
+                          className={`w-full px-2 py-1.5 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${
+                            !editingValues.quantity || editingValues.quantity < 1
+                              ? 'border-red-300 bg-red-50' 
+                              : 'border-gray-300'
+                          }`}
+                        />
+                        {(!editingValues.quantity || editingValues.quantity < 1) && (
+                          <span className="text-xs text-red-600 mt-0.5 block">Required</span>
+                        )}
+                      </div>
                     ) : (
-                      <span className="text-sm text-gray-900">{file.quantity || 1}</span>
+                      <span 
+                        className={`text-sm ${
+                          !file.quantity || file.quantity < 1 
+                            ? 'text-red-600 font-semibold' 
+                            : 'text-gray-900'
+                        }`}
+                      >
+                        {file.quantity && file.quantity >= 1 ? file.quantity : '⚠️'}
+                      </span>
                     )}
                   </td>
 
                   {/* Created */}
-                  <td className="px-2 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-3 py-4 text-sm text-gray-500">
                     {formatDate(file.createdAt || file.created)}
                   </td>
 
                   {/* Actions */}
-                  <td className="px-2 pr-3 whitespace-nowrap text-sm font-medium">
+                  <td className="px-3 py-4 text-sm font-medium">
                     <div className="flex items-center space-x-2">
                       {isEditing ? (
                         <>
@@ -325,12 +419,17 @@ const PDFFileTable = ({ files, onUpdateFile, onDeleteFile }) => {
             })}
           </tbody>
         </table>
+          </div>
+        </div>
       </div>
       
-      <div className="px-4 py-4 bg-gray-50 border-t border-gray-200">
+      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+        <p className="text-sm text-gray-600">
+          {files.length} file{files.length !== 1 ? 's' : ''} uploaded
+        </p>
         <button
           type="button"
-          className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="bg-blue-600 text-white px-6 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
         >
           SAVE
         </button>

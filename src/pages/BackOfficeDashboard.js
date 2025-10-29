@@ -88,20 +88,34 @@ const BackOfficeDashboard = () => {
 
       // Handle quotations
       if (quotationResponse.status === 'fulfilled' && quotationResponse.value.data.success) {
-        const transformedQuotations = quotationResponse.value.data.quotations.map(quotation => ({
-          id: quotation.quotationNumber,
-          inquiryId: quotation.inquiry?.inquiryNumber || 'N/A',
-          customer: `${quotation.inquiry?.customer?.firstName || ''} ${quotation.inquiry?.customer?.lastName || ''}`.trim() || 'N/A',
-          company: quotation.inquiry?.customer?.companyName || 'N/A',
-          amount: quotation.totalAmount,
-          status: quotation.status,
-          date: new Date(quotation.createdAt).toLocaleDateString('en-US', {
-            month: 'numeric',
-            day: 'numeric',
-            year: 'numeric'
-          }),
-          _id: quotation._id
-        }));
+        console.log('=== QUOTATIONS DATA ===');
+        console.log('Raw quotations:', quotationResponse.value.data.quotations);
+        
+        const transformedQuotations = quotationResponse.value.data.quotations.map(quotation => {
+          console.log(`Quotation ${quotation.quotationNumber}:`, {
+            hasQuotationPdf: !!quotation.quotationPdf,
+            quotationPdf: quotation.quotationPdf
+          });
+          
+          return {
+            id: quotation.quotationNumber,
+            inquiryId: quotation.inquiry?.inquiryNumber || 'N/A',
+            customer: `${quotation.inquiry?.customer?.firstName || ''} ${quotation.inquiry?.customer?.lastName || ''}`.trim() || 'N/A',
+            company: quotation.inquiry?.customer?.companyName || 'N/A',
+            amount: quotation.totalAmount,
+            status: quotation.status,
+            date: new Date(quotation.createdAt).toLocaleDateString('en-US', {
+              month: 'numeric',
+              day: 'numeric',
+              year: 'numeric'
+            }),
+            _id: quotation._id,
+            quotationPdf: quotation.quotationPdf // Original field (no test data)
+          };
+        });
+        
+        console.log('Transformed quotations:', transformedQuotations);
+        console.log('Quotations with PDF:', transformedQuotations.filter(q => q.quotationPdf).length);
         setQuotations(transformedQuotations);
       }
 
@@ -551,24 +565,41 @@ const BackOfficeDashboard = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {quotation.date}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <Link
-                              to={`/quotation/${quotation._id}`}
-                              className="text-green-600 hover:text-green-900 bg-green-50 px-3 py-1 rounded-md text-sm font-medium"
-                            >
-                              View
-                            </Link>
-                            {quotation.status === 'draft' && (
-                              <button 
-                                onClick={() => handleSendQuotation(quotation._id)}
-                                className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-md text-sm font-medium"
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <Link
+                                to={`/quotation/${quotation._id}`}
+                                className="text-green-600 hover:text-green-900 bg-green-50 px-3 py-1 rounded-md text-sm font-medium"
                               >
-                                Send
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                                View
+                              </Link>
+                              {quotation.status === 'draft' && (
+                                <button 
+                                  onClick={() => handleSendQuotation(quotation._id)}
+                                  className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1 rounded-md text-sm font-medium"
+                                >
+                                  Send
+                                </button>
+                              )}
+                              {quotation.quotationPdf && (
+                                <button
+                                  onClick={() => {
+                                    console.log('Opening quotation PDF:', quotation.quotationPdf);
+                                    const pdfUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/uploads/quotations/${quotation.quotationPdf}`;
+                                    console.log('PDF URL:', pdfUrl);
+                                    window.open(pdfUrl, '_blank');
+                                  }}
+                                  className="text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded-md text-sm font-medium inline-flex items-center"
+                                  title="View Quote PDF"
+                                >
+                                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                  </svg>
+                                  Quote PDF
+                                </button>
+                              )}
+                            </div>
+                          </td>
                       </tr>
                     ))}
                     {quotations.length === 0 && (

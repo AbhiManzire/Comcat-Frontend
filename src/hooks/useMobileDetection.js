@@ -4,7 +4,7 @@ const useMobileDetection = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
   const [screenSize, setScreenSize] = useState('desktop');
-
+console.log("HHHH")
   useEffect(() => {
     const checkScreenSize = () => {
       const width = window.innerWidth;

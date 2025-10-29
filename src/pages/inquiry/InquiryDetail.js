@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { inquiryAPI } from '../../services/api';
-import ComponentManager from '../../components/ComponentManager';
+import { inquiryAPI, quotationAPI } from '../../services/api';
 import QuotationPreparationModal from '../../components/QuotationPreparationModal';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -11,8 +10,60 @@ const InquiryDetail = () => {
   const { user } = useAuth();
   const [inquiry, setInquiry] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showComponentManager, setShowComponentManager] = useState(false);
   const [showQuotationModal, setShowQuotationModal] = useState(false);
+
+  // Function to download Technical Specifications as Excel
+  const handleDownloadExcel = () => {
+    if (!inquiry) return;
+    
+    try {
+      // Create CSV data (Excel-compatible) - ONLY Technical Specifications
+      let csvContent = "data:text/csv;charset=utf-8,";
+      
+      // Add inquiry header for reference
+      csvContent += `INQUIRY: ${inquiry.inquiryNumber || inquiry.id}\n`;
+      csvContent += `CREATED: ${inquiry.createdAt}\n`;
+      csvContent += `CUSTOMER: ${inquiry.customer?.name || 'N/A'}\n\n`;
+      
+      // Add Technical Specifications Table Header
+      csvContent += "TECHNICAL SPECIFICATIONS\n\n";
+      csvContent += "Part Name,Material,Thickness,Grade,Quantity,Remarks\n";
+      
+      // Add parts data
+      if (inquiry.specifications && inquiry.specifications.length > 0) {
+        inquiry.specifications.forEach(part => {
+          const partName = part.partRef || part.partName || part.fileName || 'N/A';
+          const material = part.material || 'N/A';
+          const thickness = part.thickness || 'N/A';
+          const grade = part.grade || 'N/A';
+          const quantity = part.quantity || 'N/A';
+          const remarks = part.remarks || 'No remarks';
+          
+          csvContent += `"${partName}","${material}","${thickness}","${grade}","${quantity}","${remarks}"\n`;
+        });
+      } else {
+        csvContent += "No technical specifications available\n";
+      }
+      
+      csvContent += "\n";
+      csvContent += `\nTotal Parts: ${inquiry.specifications?.length || 0}\n`;
+      csvContent += `\nNote: Download individual files separately from the Uploaded Files section\n`;
+      
+      // Create download link
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Technical_Specifications_${inquiry.inquiryNumber || inquiry.id}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Technical Specifications downloaded successfully!');
+    } catch (error) {
+      console.error('Error downloading Excel:', error);
+      toast.error('Failed to download Excel file');
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -189,46 +240,124 @@ const InquiryDetail = () => {
     return timeline;
   };
 
-  const handleComponentsChange = () => {
-    // Refresh inquiry data when components are updated
-    fetchInquiry();
-  };
-
   const handleCreateQuotation = async (inquiryId, files) => {
     try {
+      console.log('=== CREATING QUOTATION ===');
+      console.log('Files:', files);
+      console.log('Has files:', files && files.length > 0);
+      console.log('Inquiry specifications:', inquiry?.specifications);
+      console.log('Specifications length:', inquiry?.specifications?.length);
+      
       // Calculate total amount from inquiry parts
       const totalAmount = inquiry?.specifications?.reduce((total, part) => {
         return total + (part.quantity * (part.unitPrice || 0));
       }, 0) || 0;
 
-      const quotationData = {
-        inquiryId: inquiryId,
-        customerInfo: {
-          name: inquiry?.customer?.name || 'N/A',
-          company: inquiry?.customer?.company || 'N/A',
-          email: inquiry?.customer?.email || 'N/A',
-          phone: inquiry?.customer?.phone || 'N/A'
-        },
-        totalAmount: totalAmount,
-        items: inquiry?.specifications || []
-      };
+      // Use FormData if files are provided
+      const formData = new FormData();
+      formData.append('inquiryId', inquiry?.inquiryId || inquiryId);
+      formData.append('totalAmount', totalAmount);
+      formData.append('parts', JSON.stringify(inquiry?.specifications || []));
+      formData.append('terms', 'Standard manufacturing terms apply. Payment required before production begins.');
+      formData.append('notes', '');
+      formData.append('validUntil', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString());
+      
+      // Add file if provided
+      if (files && files.length > 0) {
+        console.log('Adding file to FormData:', files[0].name);
+        formData.append('uploadedFile', files[0]); // Backend expects 'uploadedFile'
+      }
 
-      // TODO: Call quotation API
-      console.log('Creating quotation:', quotationData);
-      toast.success('Quotation created successfully');
+      console.log('Creating quotation with FormData');
+      console.log('Parts being sent:', inquiry?.specifications?.length, 'parts');
+      
+      // Call quotation API with FormData
+      const response = await quotationAPI.createQuotation(formData);
+      
+      console.log('Quotation creation response:', response.data);
+      
+      if (response.data.success) {
+        toast.success('Quotation created and sent successfully!');
+        // Refresh inquiry data to show updated status
+        await fetchInquiry();
+      } else {
+        throw new Error(response.data.message || 'Failed to create quotation');
+      }
     } catch (error) {
       console.error('Error creating quotation:', error);
+      console.error('Error response:', error.response?.data);
+      toast.error(error.response?.data?.message || error.message || 'Failed to create quotation');
       throw error;
     }
   };
 
   const handleUploadQuotation = async (inquiryId, files) => {
     try {
-      // TODO: Upload quotation PDF
-      console.log('Uploading quotation:', { inquiryId, files });
-      toast.success('Quotation uploaded successfully');
+      if (!files || files.length === 0) {
+        throw new Error('Please upload a quotation PDF');
+      }
+
+      console.log('=== UPLOADING QUOTATION PDF ===');
+      console.log('Files to upload:', files);
+      console.log('First file:', files[0]);
+      console.log('File name:', files[0]?.name);
+      console.log('File type:', files[0]?.type);
+      console.log('File size:', files[0]?.size);
+      console.log('Inquiry ID:', inquiry?.inquiryId || inquiryId);
+      console.log('Inquiry specifications:', inquiry?.specifications);
+      console.log('Specifications length:', inquiry?.specifications?.length);
+
+      const formData = new FormData();
+      formData.append('inquiryId', inquiry?.inquiryId || inquiryId);
+      formData.append('quotationPdf', files[0]);
+      
+      console.log('FormData entries:');
+      for (let pair of formData.entries()) {
+        console.log(pair[0] + ':', pair[1]);
+      }
+      
+      // Include parts data
+      const parts = inquiry?.specifications || [];
+      formData.append('parts', JSON.stringify(parts));
+      
+      console.log('Parts being uploaded:', parts);
+      console.log('Parts array length:', parts.length);
+      
+      // Calculate total amount
+      const totalAmount = parts.reduce((total, part) => {
+        return total + (part.quantity * (part.unitPrice || 0));
+      }, 0) || 0;
+      formData.append('totalAmount', totalAmount);
+      
+      console.log('Total amount:', totalAmount);
+      
+      // Customer info
+      const customerInfo = {
+        name: inquiry?.customer?.name || 'N/A',
+        company: inquiry?.customer?.company || 'N/A',
+        email: inquiry?.customer?.email || 'N/A',
+        phone: inquiry?.customer?.phone || 'N/A'
+      };
+      formData.append('customerInfo', JSON.stringify(customerInfo));
+
+      console.log('Uploading quotation PDF with parts data');
+      
+      // Call upload quotation API (FIXED: using quotationAPI instead of inquiryAPI)
+      const response = await quotationAPI.uploadQuotation(formData);
+      
+      console.log('Upload quotation response:', response.data);
+      
+      if (response.data.success) {
+        toast.success('Quotation uploaded and sent successfully!');
+        // Refresh inquiry data
+        await fetchInquiry();
+      } else {
+        throw new Error(response.data.message || 'Failed to upload quotation');
+      }
     } catch (error) {
       console.error('Error uploading quotation:', error);
+      console.error('Error response:', error.response?.data);
+      toast.error(error.response?.data?.message || error.message || 'Failed to upload quotation');
       throw error;
     }
   };
@@ -300,6 +429,74 @@ const InquiryDetail = () => {
     }
   };
 
+  const handleDownloadAllFiles = async () => {
+    try {
+      // Get the auth token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Please login to download files');
+        return;
+      }
+
+      // Check if there are files to download
+      if (!inquiry.files || inquiry.files.length === 0) {
+        toast.error('No files available to download');
+        return;
+      }
+
+      const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      const downloadUrl = `${apiBaseUrl}/inquiry/${id}/files/download-all`;
+      
+      console.log('Downloading all files as ZIP...');
+      console.log('Download URL:', downloadUrl);
+      console.log('Total files:', inquiry.files.length);
+
+      toast.loading('Creating ZIP file...', { id: 'zip-download' });
+
+      // Make the request
+      const response = await fetch(downloadUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('ZIP download failed:', response.status, errorText);
+        throw new Error(`Download failed: ${response.status}`);
+      }
+
+      // Get the filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `${inquiry.inquiryNumber || inquiry.id}_files.zip`;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success(`${inquiry.files.length} files downloaded as ZIP`, { id: 'zip-download' });
+    } catch (error) {
+      console.error('ZIP download error:', error);
+      toast.error(`Failed to download files: ${error.message}`, { id: 'zip-download' });
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending':
@@ -335,8 +532,11 @@ const InquiryDetail = () => {
         <div className="px-4 py-6 sm:px-0">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900">Inquiry not found</h1>
-            <Link to="/inquiries" className="text-blue-600 hover:text-blue-800">
-              Back to Inquiries
+            <Link 
+              to='/dashboard'
+              className="text-blue-600 hover:text-blue-800"
+            >
+              Back to Dashboard
             </Link>
           </div>
         </div>
@@ -351,10 +551,10 @@ const InquiryDetail = () => {
           {/* Header */}
           <div className="mb-6">
             <Link
-              to="/inquiries"
+              to='/dashboard'
               className="text-blue-600 hover:text-blue-800 text-sm font-medium"
             >
-              ← Back to Inquiries
+              ← Back to Dashboard
             </Link>
           </div>
 
@@ -366,35 +566,32 @@ const InquiryDetail = () => {
                 <p className="text-sm text-gray-500 mt-1">Created on {inquiry.createdAt}</p>
               </div>
               <div className="flex space-x-3">
-                {/* Only show Manage Components for Back Office users */}
-                {(user?.role === 'admin' || user?.role === 'backoffice' || user?.role === 'subadmin' || user?.email === 'admin@gmail.com') && (
+                {/* Download Technical Specifications as Excel - Show for Admin, Back Office, and Sub Admin users */}
+                {(user?.role === 'admin' || user?.role === 'backoffice' || user?.role === 'subadmin') && (
                   <button 
-                    onClick={() => {
-                      console.log('=== MANAGE COMPONENTS BUTTON CLICKED ===');
-                      console.log('Current showComponentManager:', showComponentManager);
-                      console.log('Inquiry ID:', inquiry?.inquiryId);
-                      setShowComponentManager(!showComponentManager);
-                      console.log('New showComponentManager will be:', !showComponentManager);
-                    }}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 flex items-center"
+                    onClick={handleDownloadExcel}
+                    className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 flex items-center"
+                    title="Download Technical Specifications as Excel"
                   >
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    {showComponentManager ? 'Hide Components' : 'Manage Components'}
+                    Download Data
                   </button>
                 )}
                 
-                {/* Status indicator - show for all users */}
-                <button className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 flex items-center">
-                  <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  Quoted
-                </button>
+                {/* Quoted Status Button - Only show if quotation has been sent */}
+                {inquiry?.status === 'quoted' && (
+                  <button className="bg-orange-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-orange-700 flex items-center cursor-default">
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Quoted
+                  </button>
+                )}
                 
-                {/* Only show Create Quotation for Back Office users */}
-                {(user?.role === 'admin' || user?.role === 'backoffice' || user?.role === 'subadmin' || user?.email === 'admin@gmail.com') && (
+                {/* Only show Create Quotation for Back Office and Sub Admin users (excluding admin) */}
+                {(user?.role === 'backoffice' || user?.role === 'subadmin') && (
                   <button 
                     onClick={() => {
                       console.log('Create Quotation button clicked');
@@ -414,30 +611,12 @@ const InquiryDetail = () => {
             </div>
           </div>
 
-          {/* Component Manager */}
-          {showComponentManager && (
-            <div className="mb-6">
-              {console.log('=== RENDERING COMPONENT MANAGER ===')}
-              {console.log('showComponentManager:', showComponentManager)}
-              {console.log('inquiry.inquiryId:', inquiry?.inquiryId)}
-              <ComponentManager 
-                inquiryId={inquiry.inquiryId} 
-                onComponentsChange={handleComponentsChange}
-              />
-            </div>
-          )}
-
-          {/* Technical Specifications - Full Width (Hidden when ComponentManager is active) */}
-          {!showComponentManager && (
+          {/* Technical Specifications - Full Width */}
             <div className="bg-white shadow rounded-lg p-6 mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Technical Specifications</h3>
             <div className="overflow-x-auto border border-gray-200 rounded-lg">
-              <div className="max-h-96 overflow-y-auto" style={{
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#d1d5db #f3f4f6'
-              }}>
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50 sticky top-0 z-10">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap min-w-[120px]">
                       <div className="flex items-center">
@@ -488,8 +667,8 @@ const InquiryDetail = () => {
                       </div>
                     </th>
                   </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
                   {inquiry.specifications && inquiry.specifications.length > 0 ? (
                     inquiry.specifications.map((spec, index) => (
                       <tr key={index} className="hover:bg-gray-50">
@@ -529,62 +708,71 @@ const InquiryDetail = () => {
                       </td>
                     </tr>
                   )}
-                  </tbody>
-                </table>
-              </div>
+                </tbody>
+              </table>
             </div>
           </div>
-          )}
 
-          {/* Main Content (Hidden when ComponentManager is active) */}
-          {!showComponentManager && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Main Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column */}
             <div className="space-y-6">
 
               {/* Uploaded Files */}
               <div className="bg-white shadow rounded-lg p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Uploaded Files</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Uploaded Files</h3>
+                  {inquiry.files && inquiry.files.length > 0 && (
+                    <button
+                      onClick={handleDownloadAllFiles}
+                      className="inline-flex items-center px-3 py-1.5 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors shadow-sm"
+                      title="Download all files as ZIP"
+                    >
+                      <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Download All ({inquiry.files.length})
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-3">
                   {inquiry.files && inquiry.files.length > 0 ? (
                     inquiry.files.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-blue-600 text-xs">
-                                {file.fileType === '.zip' ? '📦' : 
-                                 file.fileType === '.xlsx' || file.fileType === '.xls' ? '📊' : 
-                                 file.fileType === '.pdf' ? '📄' : '📄'}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="ml-3">
-                            <p 
-                              className="text-sm font-medium text-gray-900 truncate max-w-[200px]" 
-                              title={file.originalName || file.name}
-                            >
-                              {(() => {
-                                const fileName = file.originalName || file.name || 'N/A';
-                                if (fileName.length > 25) {
-                                  return fileName.substring(0, 25) + '...';
-                                }
-                                return fileName;
-                              })()}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {file.fileType || file.type} • {(file.fileSize || file.size) ? `${Math.round((file.fileSize || file.size) / 1024)} KB` : 'Unknown size'}
-                            </p>
+                      <div key={index} className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex-shrink-0">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-blue-600 text-xs">
+                              {file.fileType === '.zip' ? '📦' : 
+                               file.fileType === '.xlsx' || file.fileType === '.xls' || file.fileType === '.xlsm' ? '📊' : 
+                               file.fileType === '.pdf' ? '📄' : '📄'}
+                            </span>
                           </div>
                         </div>
-                        <button 
+                        <div className="ml-3 flex-1">
+                          <p 
+                            className="text-sm font-medium text-gray-900 truncate max-w-[200px]" 
+                            title={file.originalName || file.name}
+                          >
+                            {(() => {
+                              const fileName = file.originalName || file.name || 'N/A';
+                              if (fileName.length > 30) {
+                                return fileName.substring(0, 30) + '...';
+                              }
+                              return fileName;
+                            })()}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {file.fileType || file.type} • {(file.fileSize || file.size) ? `${Math.round((file.fileSize || file.size) / 1024)} KB` : 'Unknown size'}
+                          </p>
+                        </div>
+                        <button
                           onClick={() => handleFileDownload(file)}
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center px-3 py-1 rounded-md hover:bg-blue-50 transition-colors"
+                          className="ml-2 p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          title={`Download ${file.originalName || file.name}`}
                         >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
-                          Download
                         </button>
                       </div>
                     ))
@@ -669,7 +857,6 @@ const InquiryDetail = () => {
               
             </div>
           </div>
-          )}
         </div>
       </div>
 
@@ -679,7 +866,9 @@ const InquiryDetail = () => {
         <QuotationPreparationModal
           isOpen={showQuotationModal}
           onClose={() => setShowQuotationModal(false)}
-          inquiryId={inquiry?.id}
+          inquiryId={inquiry?.inquiryId}
+          inquiryNumber={inquiry?.id}
+          parts={inquiry?.specifications || []}
           customerInfo={{
             name: inquiry?.customer?.name || 'N/A',
             company: inquiry?.customer?.company || 'N/A',

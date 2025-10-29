@@ -296,31 +296,18 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
       {/* Header Information */}
       <div className="mb-6">
         <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
-          Material & Thickness Data added through Admin (Back Office)
+          Customer Material Data
         </h2>
         <p className="text-sm md:text-base text-gray-600 mb-6">
-          Customer can Edit the inquiry anytime before order acceptance. Each time
+          View customer uploaded material specifications and files
         </p>
       </div>
 
-      {/* New Estimate Section */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          New Estimate
-        </label>
-        <input
-          type="text"
-          value={estimateNumber}
-          onChange={(e) => setEstimateNumber(e.target.value)}
-          placeholder="Enter estimate number"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-      </div>
 
-      {/* File Upload Section */}
+      {/* Excel Template Download */}
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-4">
-          <h3 className="text-lg font-semibold text-gray-800">Upload Component Files</h3>
+          <h3 className="text-lg font-semibold text-gray-800">Customer Material Data</h3>
           <button
             onClick={downloadExcelTemplate}
             className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
@@ -329,41 +316,6 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
             <span className="hidden sm:inline">Download Excel Template</span>
             <span className="sm:hidden">Download Template</span>
           </button>
-        </div>
-        
-        <div
-          className={`border-2 border-dashed rounded-lg p-4 md:p-8 text-center transition-colors ${
-            dragActive 
-              ? 'border-blue-500 bg-blue-50' 
-              : 'border-gray-300 hover:border-gray-400 bg-gray-100'
-          }`}
-          onDragEnter={handleDragIn}
-          onDragLeave={handleDragOut}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-        >
-          <CloudArrowUpIcon className="mx-auto h-8 w-8 md:h-12 md:w-12 text-gray-400 mb-4" />
-          <p className="text-sm md:text-lg font-medium text-gray-700 mb-2">
-            <span className="hidden sm:inline">DRAG AND DROP HERE OR CLICK TO CHOOSE FILES</span>
-            <span className="sm:hidden">CLICK TO CHOOSE FILES</span>
-          </p>
-          <p className="text-xs md:text-sm text-gray-500 mb-4">
-            Support for Excel (.xlsx, .xls), CAD files (.dxf, .dwg), and other formats
-          </p>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 md:px-6 md:py-3 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors text-sm md:text-base"
-          >
-            Choose Files
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept=".xlsx,.xls,.dxf,.dwg,.pdf,.jpg,.jpeg,.png"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
         </div>
       </div>
 
@@ -391,51 +343,11 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-900 text-sm">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editingValues.partRef || ''}
-                          onChange={(e) => setEditingValues(prev => ({ ...prev, partRef: e.target.value }))}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      ) : (
-                        component.partRef || 'No Part Ref'
-                      )}
+                      {component.partRef || 'No Part Ref'}
                     </h4>
                     <p className="text-xs text-gray-500 mt-1">
                       {component.material} • {component.thickness}
                     </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {isEditing ? (
-                      <>
-                        <button
-                          onClick={() => saveEdit(component._id || component.partRef)}
-                          className="text-green-600 hover:text-green-800 p-1"
-                        >
-                          <CheckIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="text-red-600 hover:text-red-800 p-1"
-                        >
-                          <XMarkIcon className="w-4 h-4" />
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => startEditing(component._id || component.partRef)}
-                        className="text-blue-600 hover:text-blue-800 p-1"
-                      >
-                        <PencilIcon className="w-4 h-4" />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => deleteComponent(component._id || component.partRef)}
-                      className="text-red-600 hover:text-red-800 p-1"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </button>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
@@ -464,7 +376,7 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b cursor-pointer hover:bg-gray-100 min-w-[120px]">
                   <div className="flex items-center">
-                    Part Ref
+                    Part Name
                     <svg className="w-4 h-4 ml-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -502,9 +414,6 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
                     </svg>
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b min-w-[100px]">
-                  Actions
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -515,87 +424,21 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
                 return (
                   <tr key={component._id || component.partRef || index} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editingValues.partRef || ''}
-                          onChange={(e) => setEditingValues(prev => ({ ...prev, partRef: e.target.value }))}
-                          className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      ) : (
-                        <span className="font-medium text-gray-900">
-                          {component.partRef || 'No Part Ref'}
-                        </span>
-                      )}
+                      <span className="font-medium text-gray-900">
+                        {component.partRef || 'No Part Ref'}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">
-                      {isEditing ? (
-                        <select
-                          value={editingValues.material || ''}
-                          onChange={(e) => setEditingValues(prev => ({ ...prev, material: e.target.value }))}
-                          className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="">Select Material</option>
-                          <option value="Zintec">Zintec</option>
-                          <option value="Stainless Steel">Stainless Steel</option>
-                          <option value="Aluminum">Aluminum</option>
-                          <option value="Copper">Copper</option>
-                          <option value="Brass">Brass</option>
-                        </select>
-                      ) : (
-                        component.material
-                      )}
+                      {component.material}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editingValues.thickness || ''}
-                          onChange={(e) => setEditingValues(prev => ({ ...prev, thickness: e.target.value }))}
-                          className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      ) : (
-                        component.thickness
-                      )}
+                      {component.thickness}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">
                       {new Date(component.created).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 border-b">
                       {new Date(component.modified).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 border-b">
-                      <div className="flex items-center space-x-2">
-                        {isEditing ? (
-                          <>
-                            <button
-                              onClick={() => saveEdit(component._id || component.partRef)}
-                              className="text-green-600 hover:text-green-800"
-                            >
-                              <CheckIcon className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={cancelEdit}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              <XMarkIcon className="w-5 h-5" />
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => startEditing(component._id || component.partRef)}
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            <PencilIcon className="w-5 h-5" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => deleteComponent(component._id || component.partRef)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <TrashIcon className="w-5 h-5" />
-                        </button>
-                      </div>
                     </td>
                   </tr>
                 );
@@ -605,112 +448,7 @@ const ComponentManager = ({ inquiryId, onComponentsChange }) => {
         </div>
       </div>
 
-      {/* Add New Component Form */}
-      <div className="mb-8 p-4 md:p-6 bg-gray-50 rounded-lg">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Add New Component</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Part Ref</label>
-            <input
-              type="text"
-              value={newComponent.partRef}
-              onChange={(e) => setNewComponent({...newComponent, partRef: e.target.value})}
-              placeholder="Part reference"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
-            <select
-              value={newComponent.material}
-              onChange={(e) => setNewComponent({...newComponent, material: e.target.value})}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select Material</option>
-              <option value="Zintec">Zintec</option>
-              <option value="Stainless Steel">Stainless Steel</option>
-              <option value="Aluminum">Aluminum</option>
-              <option value="Copper">Copper</option>
-              <option value="Brass">Brass</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Thickness</label>
-            <input
-              type="text"
-              value={newComponent.thickness}
-              onChange={(e) => setNewComponent({...newComponent, thickness: e.target.value})}
-              placeholder="e.g., 1.5mm"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
-            <input
-              type="number"
-              value={newComponent.quantity}
-              onChange={(e) => setNewComponent({...newComponent, quantity: parseInt(e.target.value)})}
-              min="1"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Grade</label>
-            <input
-              type="text"
-              value={newComponent.grade}
-              onChange={(e) => setNewComponent({...newComponent, grade: e.target.value})}
-              placeholder="Material grade"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
-            <input
-              type="number"
-              step="0.01"
-              value={newComponent.price}
-              onChange={(e) => setNewComponent({...newComponent, price: parseFloat(e.target.value)})}
-              placeholder="Unit price"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-          <textarea
-            value={newComponent.remarks}
-            onChange={(e) => setNewComponent({...newComponent, remarks: e.target.value})}
-            placeholder="Additional notes or specifications"
-            rows="3"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <button
-          onClick={addComponent}
-          className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center"
-        >
-          <PlusIcon className="w-5 h-5 mr-2" />
-          Add Component
-        </button>
-      </div>
 
-      {/* Save Button */}
-      <div className="flex justify-start">
-        <button
-          onClick={() => {
-            if (onComponentsChange) {
-              onComponentsChange();
-            }
-            alert('All changes have been saved automatically!');
-          }}
-          className="w-full sm:w-auto px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors font-medium text-sm md:text-base"
-        >
-          SAVE
-        </button>
-      </div>
     </div>
   );
 };

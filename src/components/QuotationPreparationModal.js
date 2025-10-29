@@ -5,7 +5,9 @@ import toast from 'react-hot-toast';
 const QuotationPreparationModal = ({ 
   isOpen, 
   onClose, 
-  inquiryId, 
+  inquiryId,
+  inquiryNumber,
+  parts = [],
   customerInfo, 
   totalAmount,
   onCreateQuotation,
@@ -124,25 +126,56 @@ const QuotationPreparationModal = ({
           <div>
             <h3 className="text-lg font-medium text-gray-900 mb-4">Customer Information</h3>
             <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+              <p><span className="font-medium">Inquiry:</span> {inquiryNumber}</p>
               <p><span className="font-medium">Name:</span> {customerInfo.name}</p>
               <p><span className="font-medium">Company:</span> {customerInfo.company}</p>
               <p><span className="font-medium">Email:</span> {customerInfo.email}</p>
             </div>
           </div>
 
-          {/* DEBUG: Force show PDF upload section */}
-          <div className="bg-red-100 p-4 rounded-lg">
-            <h3 className="text-lg font-bold text-red-800 mb-2">DEBUG: PDF Upload Section Should Be Here</h3>
-            <p className="text-red-700">If you can see this, the modal is working but PDF section is missing</p>
+          {/* Parts Table */}
+          <div>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Parts & Specifications</h3>
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="overflow-x-auto max-h-60">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Part Name</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Material</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thickness</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {parts && parts.length > 0 ? (
+                      parts.map((part, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">{part.partRef || part.partName || part.fileName || 'N/A'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">{part.material || 'N/A'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">{part.thickness || 'N/A'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">{part.grade || 'N/A'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-700">{part.quantity || 'N/A'}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="px-4 py-6 text-center text-sm text-gray-500">
+                          No parts data available
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Total {parts?.length || 0} part(s)</p>
           </div>
 
           {/* PDF Upload Section */}
           <div>
-            {console.log('Rendering PDF upload section')}
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Upload Quotation PDF</h3>
-            <div className="bg-yellow-100 p-4 rounded-lg mb-4">
-              <p className="text-sm text-yellow-800">DEBUG: PDF Upload Section is rendering</p>
-            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Upload Quotation PDF (Optional)</h3>
             <div
               className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                 dragActive 
@@ -205,14 +238,7 @@ const QuotationPreparationModal = ({
         </div>
 
         {/* Footer */}
-        {console.log('Rendering footer with buttons:', { loading, uploadedFiles: uploadedFiles.length })}
         <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
-          <div className="bg-green-100 p-2 rounded text-xs text-green-800 mr-4">
-            DEBUG: Footer rendering with {uploadedFiles.length} files
-          </div>
-          <div className="bg-blue-100 p-2 rounded text-xs text-blue-800 mr-4">
-            DEBUG: Should show 3 buttons: Cancel, Upload Quotation, Create Quotation
-          </div>
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"

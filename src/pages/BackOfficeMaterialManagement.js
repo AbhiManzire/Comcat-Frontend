@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import axios from 'axios';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const BackOfficeMaterialManagement = () => {
   const [materialData, setMaterialData] = useState([]);
@@ -96,23 +99,79 @@ const BackOfficeMaterialManagement = () => {
 
   const loadMaterialData = async () => {
     try {
-      console.log('Loading material data...');
+      console.log('📥 Loading material data from API...');
       
-      // Check if data exists in localStorage
-      const savedData = localStorage.getItem('materialData');
-      if (savedData) {
-        console.log('Loading saved material data from localStorage');
-        setMaterialData(JSON.parse(savedData));
-      } else {
-        console.log('No saved data found, generating default material data');
-        const materialData = generateMaterialData();
-        setMaterialData(materialData);
-        // Save to localStorage for persistence
-        localStorage.setItem('materialData', JSON.stringify(materialData));
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/admin/materials`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.data.success) {
+        const data = response.data.materialData;
+        if (data && data.length > 0) {
+          console.log('✅ Material data loaded:', data.length, 'items');
+          // Add UI-specific id field
+          const dataWithIds = data.map((item, index) => ({
+            id: index + 1,
+            material: item.material,
+            thickness: item.thickness,
+            grade: item.grade || '',
+            status: item.status || 'Active',
+            created: item.created || new Date().toISOString(),
+            modified: item.modified || new Date().toISOString(),
+            isEditing: false
+          }));
+          setMaterialData(dataWithIds);
+        } else {
+          console.log('⚠️ No material data found');
+          setMaterialData([]);
+        }
       }
     } catch (error) {
-      console.error('Error loading material data:', error);
+      console.error('❌ Error loading material data:', error);
       toast.error('Failed to load material data');
+      setMaterialData([]);
+    }
+  };
+
+  // Helper function to save all data to database
+  const saveToDatabase = async (data) => {
+    try {
+      console.log('💾 Saving to database...');
+      
+      // Transform data for backend - remove UI-specific fields
+      const dataToSave = data.map(item => ({
+        material: item.material,
+        thickness: item.thickness,
+        grade: item.grade || '',
+        status: item.status || 'Active',
+        created: item.created || new Date().toISOString(),
+        modified: new Date().toISOString()
+      }));
+      
+      const token = localStorage.getItem('token');
+      const response = await axios.put(
+        `${API_URL}/api/admin/materials`,
+        { materialData: dataToSave },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        console.log('✅ Saved to database successfully');
+        return true;
+      } else {
+        throw new Error(response.data.message || 'Failed to save');
+      }
+    } catch (error) {
+      console.error('❌ Error saving to database:', error);
+      throw error;
     }
   };
 
@@ -161,7 +220,7 @@ const BackOfficeMaterialManagement = () => {
   const handleSave = async (id) => {
     setLoading(true);
     try {
-      console.log('Updating material data and saving to localStorage');
+      console.log('✏️ Updating material...');
       
       const updatedData = materialData.map(item => 
         item.id === id 
@@ -170,25 +229,26 @@ const BackOfficeMaterialManagement = () => {
               material: editData.material, 
               thickness: editData.thickness,
               grade: editData.grade,
-              pricePerKg: parseFloat(editData.pricePerKg),
               status: editData.status,
-              modified: new Date().toLocaleDateString('en-US'),
+              modified: new Date().toISOString(),
               isEditing: false
             }
           : item
       );
       
+      // Save to database immediately
+      await saveToDatabase(updatedData);
+      
       setMaterialData(updatedData);
-      
-      // Save to localStorage for persistence
-      localStorage.setItem('materialData', JSON.stringify(updatedData));
-      
       setEditingRow(null);
       setEditData({});
-      toast.success('Changes saved successfully');
+      toast.success('✅ Material updated successfully!');
+      
+      // Reload to sync with database
+      await loadMaterialData();
     } catch (error) {
-      console.error('Error saving material data:', error);
-      toast.error('Failed to save changes');
+      console.error('❌ Error saving material:', error);
+      toast.error('Failed to save changes: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -206,15 +266,28 @@ const BackOfficeMaterialManagement = () => {
     );
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this item?')) {
-      const updatedData = materialData.filter(item => item.id !== id);
-      setMaterialData(updatedData);
-      
-      // Save to localStorage for persistence
-      localStorage.setItem('materialData', JSON.stringify(updatedData));
-      
-      toast.success('Item deleted successfully');
+      setLoading(true);
+      try {
+        console.log('🗑️ Deleting material...');
+        
+        const updatedData = materialData.filter(item => item.id !== id);
+        
+        // Save to database immediately
+        await saveToDatabase(updatedData);
+        
+        setMaterialData(updatedData);
+        toast.success('✅ Material deleted successfully!');
+        
+        // Reload to sync with database
+        await loadMaterialData();
+      } catch (error) {
+        console.error('❌ Error deleting material:', error);
+        toast.error('Failed to delete: ' + (error.response?.data?.message || error.message));
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -228,40 +301,54 @@ const BackOfficeMaterialManagement = () => {
     });
   };
 
-  const handleAddMaterial = () => {
+  const handleAddMaterial = async () => {
     if (!newMaterial.material || !newMaterial.thickness || !newMaterial.grade) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    const newId = Math.max(...materialData.map(item => item.id), 0) + 1;
-    const today = new Date();
-    
-    const materialToAdd = {
-      id: newId,
-      material: newMaterial.material,
-      thickness: newMaterial.thickness,
-      grade: newMaterial.grade,
-      status: newMaterial.status,
-      created: today.toLocaleDateString('en-US'),
-      modified: today.toLocaleDateString('en-US'),
-      isEditing: false
-    };
+    setLoading(true);
+    try {
+      console.log('➕ Adding new material...');
+      
+      const newId = Math.max(...materialData.map(item => item.id), 0) + 1;
+      const today = new Date();
+      
+      const materialToAdd = {
+        id: newId,
+        material: newMaterial.material,
+        thickness: newMaterial.thickness,
+        grade: newMaterial.grade,
+        status: newMaterial.status,
+        created: today.toISOString(),
+        modified: today.toISOString(),
+        isEditing: false
+      };
 
-    const updatedData = [...materialData, materialToAdd];
-    setMaterialData(updatedData);
-    
-    // Save to localStorage for persistence
-    localStorage.setItem('materialData', JSON.stringify(updatedData));
-    
-    setShowAddModal(false);
-    setNewMaterial({
-      material: '',
-      thickness: '',
-      grade: '',
-      status: 'Active'
-    });
-    toast.success('New material added successfully');
+      const updatedData = [...materialData, materialToAdd];
+      
+      // Save to database immediately
+      await saveToDatabase(updatedData);
+      
+      setMaterialData(updatedData);
+      setShowAddModal(false);
+      setNewMaterial({
+        material: '',
+        thickness: '',
+        grade: '',
+        status: 'Active'
+      });
+      
+      toast.success('✅ Material added successfully!');
+      
+      // Reload to sync with database
+      await loadMaterialData();
+    } catch (error) {
+      console.error('❌ Error adding material:', error);
+      toast.error('Failed to add material: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancelAdd = () => {
@@ -274,25 +361,6 @@ const BackOfficeMaterialManagement = () => {
     });
   };
 
-  const handleSaveAll = async () => {
-    setLoading(true);
-    try {
-      console.log('Saving all material data to localStorage');
-      
-      // Save current state to localStorage
-      localStorage.setItem('materialData', JSON.stringify(materialData));
-      
-      toast.success('All changes saved successfully');
-    } catch (error) {
-      console.error('Error saving material data:', error);
-      toast.error('Failed to save changes');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const materialOptions = ['Zintec', 'Stainless Steel', 'Aluminum', 'Mild Steel', 'Galvanized Steel'];
-  const thicknessOptions = ['0.5', '1.0', '1.5', '2.0', '2.5', '3.0', '4.0', '5.0'];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -324,11 +392,17 @@ const BackOfficeMaterialManagement = () => {
         {/* Page Title */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Material & Thickness Data Managements
+            Material & Thickness Data Management
           </h1>
           <p className="text-gray-600">
             Manage material specifications and thickness data for orders
           </p>
+          <div className="mt-3 flex items-center bg-green-50 border border-green-200 rounded-lg px-4 py-2 w-fit">
+            <span className="text-green-600 mr-2">✅</span>
+            <span className="text-sm font-medium text-green-800">
+              Auto-Save is ON - Changes save automatically
+            </span>
+          </div>
         </div>
 
         {/* New Estimate Input */}
@@ -421,15 +495,13 @@ const BackOfficeMaterialManagement = () => {
                         <div className="flex items-center">
                           <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
                           {editingRow === item.id ? (
-                            <select
+                            <input
+                              type="text"
                               value={editData.material}
                               onChange={(e) => setEditData({...editData, material: e.target.value})}
                               className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                              {materialOptions.map(option => (
-                                <option key={option} value={option}>{option}</option>
-                              ))}
-                            </select>
+                              placeholder="Enter material"
+                            />
                           ) : (
                             item.material
                           )}
@@ -437,15 +509,14 @@ const BackOfficeMaterialManagement = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {editingRow === item.id ? (
-                          <select
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
                             value={editData.thickness}
                             onChange={(e) => setEditData({...editData, thickness: e.target.value})}
-                            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          >
-                            {thicknessOptions.map(option => (
-                              <option key={option} value={option}>{option}mm</option>
-                            ))}
-                          </select>
+                            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-24"
+                          />
                         ) : (
                           <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
                             {item.thickness}mm
@@ -535,16 +606,13 @@ const BackOfficeMaterialManagement = () => {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <div className="flex justify-end">
-              <button
-                onClick={handleSaveAll}
-                disabled={loading}
-                className="bg-purple-600 text-white px-6 py-2 rounded-md text-sm font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
-              >
-                {loading ? 'Saving...' : 'SAVE ALL'}
-              </button>
+          {/* Info Message */}
+          <div className="px-6 py-4 bg-gradient-to-r from-green-50 to-blue-50 border-t border-gray-200">
+            <div className="flex items-center justify-center text-sm text-gray-700">
+              <span className="mr-2">✅</span>
+              <span>
+                <strong>Auto-Save Enabled:</strong> All changes are saved automatically to database
+              </span>
             </div>
           </div>
         </div>
@@ -582,16 +650,16 @@ const BackOfficeMaterialManagement = () => {
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Thickness *</label>
-                  <select
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
                     value={newMaterial.thickness}
                     onChange={(e) => setNewMaterial({...newMaterial, thickness: e.target.value})}
+                    placeholder="Enter thickness (e.g., 1.5)"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select Thickness</option>
-                    {thicknessOptions.map(option => (
-                      <option key={option} value={option}>{option}mm</option>
-                    ))}
-                  </select>
+                    required
+                  />
                 </div>
                 
                 <div>

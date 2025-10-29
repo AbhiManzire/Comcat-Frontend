@@ -293,30 +293,10 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
             toast.success(`PDF processed successfully! Found ${processedParts.length} parts with pricing information.`);
           }
           
-          // Set total amount if extracted
-          if (extractedTotal && extractedTotal > 0) {
-            setTotalAmount(extractedTotal);
-            setPdfProcessed(true);
-            toast.success(`Total amount extracted: $${extractedTotal.toFixed(2)}`);
-          } else {
-            // Calculate total from parts
-            const calculatedTotal = extractedParts.reduce((sum, part) => sum + (part.totalPrice || 0), 0);
-            if (calculatedTotal > 0) {
-              setTotalAmount(calculatedTotal);
-              setPdfProcessed(true);
-              toast.success(`Total amount calculated: $${calculatedTotal.toFixed(2)}`);
-            } else {
-              // Check if any parts have pricing
-              const hasAnyPricing = extractedParts.some(part => part.unitPrice > 0);
-              if (hasAnyPricing) {
-                setTotalAmount(calculatedTotal);
-                setPdfProcessed(true);
-                toast.success(`Total amount calculated: $${calculatedTotal.toFixed(2)}`);
-              } else {
-                toast.success(`PDF uploaded: ${file.name}. Parts extracted but no pricing found. Please enter the total amount manually.`);
-              }
-            }
-          }
+          // Don't set total amount automatically - let admin enter manually
+          setTotalAmount(0);
+          setPdfProcessed(false);
+          toast.success(`PDF uploaded: ${file.name}. ${extractedParts.length > 0 ? `Found ${extractedParts.length} parts. ` : ''}Please enter the total amount manually.`);
         } else {
           toast.dismiss(); // Clear loading toast
           toast.error('Failed to process PDF. Please enter the total amount manually.');
@@ -357,6 +337,10 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
         return;
       }
     } else {
+      if (!uploadedQuotationFile) {
+        toast.error('Please upload a quotation PDF');
+        return;
+      }
       if (totalAmount <= 0) {
         toast.error('Please enter a valid total amount');
         return;
@@ -366,34 +350,60 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
     try {
       setLoading(true);
       
-      const quotationData = {
-        inquiryId: inquiry._id,
-        parts: isUploadQuotation ? [] : parts.map(part => ({
-          partRef: part.partRef,
-          material: part.material,
-          thickness: part.thickness,
-          grade: part.grade || '',
-          quantity: part.quantity,
-          unitPrice: part.unitPrice,
-          totalPrice: part.totalPrice,
-          remarks: part.remarks
-        })),
-        totalAmount: isUploadQuotation ? totalAmount : calculateTotal(),
-        isUploadQuotation: isUploadQuotation,
-        uploadedFile: isUploadQuotation ? uploadedQuotationFile : null,
-        terms: formData.terms,
-        notes: formData.notes,
-        validUntil: formData.validUntil
-      };
+      // If uploading quotation with PDF, use multipart/form-data
+      if (isUploadQuotation && uploadedQuotationFile) {
+        const uploadFormData = new FormData(); // Renamed to avoid variable clash
+        uploadFormData.append('quotationPdf', uploadedQuotationFile);
+        uploadFormData.append('inquiryId', inquiry._id);
+        uploadFormData.append('totalAmount', totalAmount);
+        uploadFormData.append('customerInfo', JSON.stringify({
+          name: getCustomerData().firstName + ' ' + getCustomerData().lastName,
+          company: getCustomerData().companyName,
+          email: getCustomerData().email,
+          phone: inquiry.customerData?.phoneNumber || 'N/A'
+        }));
+        uploadFormData.append('terms', formData.terms); // Use state variable formData
+        uploadFormData.append('notes', formData.notes); // Use state variable formData
+        uploadFormData.append('validUntil', formData.validUntil); // Use state variable formData
 
-      const response = await quotationAPI.createQuotation(quotationData);
-      
-      if (response.data.success) {
-        toast.success('Quotation created successfully!');
-        onSuccess && onSuccess(response.data.quotation);
-        onClose();
+        const response = await quotationAPI.uploadQuotation(uploadFormData);
+        
+        if (response.data.success) {
+          toast.success('Quotation uploaded successfully!');
+          onSuccess && onSuccess(response.data.quotation);
+          onClose();
+        } else {
+          toast.error(response.data.message || 'Failed to upload quotation');
+        }
       } else {
-        toast.error(response.data.message || 'Failed to create quotation');
+        // Regular quotation creation
+        const quotationData = {
+          inquiryId: inquiry._id,
+          parts: parts.map(part => ({
+            partRef: part.partRef,
+            material: part.material,
+            thickness: part.thickness,
+            grade: part.grade || '',
+            quantity: part.quantity,
+            unitPrice: part.unitPrice,
+            totalPrice: part.totalPrice,
+            remarks: part.remarks
+          })),
+          totalAmount: calculateTotal(),
+          terms: formData.terms,
+          notes: formData.notes,
+          validUntil: formData.validUntil
+        };
+
+        const response = await quotationAPI.createQuotation(quotationData);
+        
+        if (response.data.success) {
+          toast.success('Quotation created successfully!');
+          onSuccess && onSuccess(response.data.quotation);
+          onClose();
+        } else {
+          toast.error(response.data.message || 'Failed to create quotation');
+        }
       }
     } catch (error) {
       console.error('Error creating quotation:', error);
@@ -613,10 +623,7 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
                     placeholder="Enter total amount from PDF (e.g., 150.00)"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    {parts.length > 0 
-                      ? "Total amount has been automatically calculated from extracted parts. You can modify it if needed."
-                      : "Enter the total amount from your quotation PDF"
-                    }
+                    Enter the total amount from your quotation PDF manually
                   </p>
                 </div>
               )}
@@ -805,7 +812,7 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
                     </div>
                   </div>
 
-                  {/* <div className="mt-3">
+                  <div className="mt-3">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Remarks
                     </label>
@@ -816,7 +823,7 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                       placeholder="Additional notes for this part"
                     />
-                  </div> */}
+                  </div>
                 </div>
                 ))}
               </div>
@@ -837,6 +844,54 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
           </div>
           )}
 
+          {/* Terms and Valid Until Section */}
+          {/* <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Terms & Validity</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Valid Until
+                </label>
+                <input
+                  type="date"
+                  value={formData.validUntil}
+                  onChange={(e) => setFormData({...formData, validUntil: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  min={new Date().toISOString().split('T')[0]}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Quotation will be valid until this date
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Terms & Conditions
+                </label>
+                <textarea
+                  value={formData.terms}
+                  onChange={(e) => setFormData({...formData, terms: e.target.value})}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  placeholder="Enter terms and conditions"
+                />
+              </div>
+            </div>
+            
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Additional Notes
+              </label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                rows={2}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                placeholder="Any additional notes or special instructions"
+              />
+            </div>
+          </div> */}
 
           {/* Actions */}
           <div className="flex justify-end space-x-3">
@@ -847,28 +902,12 @@ const QuotationForm = ({ inquiry, inquiries = [], onClose, onSuccess }) => {
             >
               Cancel
             </button>
-            {isUploadQuotation && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (uploadedQuotationFile) {
-                    handleSubmit({ preventDefault: () => {} });
-                  } else {
-                    toast.error('Please upload a quotation PDF first');
-                  }
-                }}
-                disabled={loading || !uploadedQuotationFile}
-                className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {loading ? 'Uploading...' : 'Upload Quotations'}
-              </button>
-            )}
             <button
               type="submit"
               disabled={loading}
               className="px-4 py-2 bg-green-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create Quotation'}
+              {loading ? 'Creating...' : 'Submit Quotation'}
             </button>
           </div>
         </form>

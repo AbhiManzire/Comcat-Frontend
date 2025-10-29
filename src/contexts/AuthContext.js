@@ -165,15 +165,26 @@ export const AuthProvider = ({ children }) => {
 
   const updateProfile = async (profileData) => {
     try {
+      console.log('=== AUTH CONTEXT: updateProfile called ===');
+      console.log('Profile data to send:', profileData);
+      
       const response = await axios.put(`${API_BASE_URL}/auth/profile`, profileData, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
       
-      setUser(response.data);
+      console.log('Profile update response:', response.data);
+      
+      // Backend returns { success: true, message: ..., user: {...} }
+      // So we need to extract the user object
+      const updatedUser = response.data.user || response.data;
+      console.log('Setting updated user:', updatedUser);
+      
+      setUser(updatedUser);
       return { success: true };
     } catch (error) {
+      console.error('Profile update error:', error);
       return {
         success: false,
         error: error.response?.data?.message || 'Profile update failed'

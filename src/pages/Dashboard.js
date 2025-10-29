@@ -71,8 +71,16 @@ const Dashboard = () => {
       const response = await quotationAPI.getQuotations();
       console.log('Quotations response:', response.data);
       if (response.data.success) {
-        setQuotations(response.data.quotations || []);
-        console.log('Quotations set:', response.data.quotations?.length || 0);
+        const quotations = response.data.quotations || [];
+        setQuotations(quotations);
+        console.log('Quotations set:', quotations.length);
+        console.log('Quotations with PDF:', quotations.filter(q => q.quotationPdf).length);
+        quotations.forEach((q, i) => {
+          console.log(`Quotation ${i+1} (${q.quotationNumber}):`, {
+            hasQuotationPdf: !!q.quotationPdf,
+            quotationPdf: q.quotationPdf
+          });
+        });
       } else {
         console.error('Quotations API failed:', response.data.message);
       }
@@ -592,14 +600,14 @@ const Dashboard = () => {
                   ) : quotations.length > 0 ? (
                     <div className="space-y-4">
                       {quotations.map((quotation) => (
-                        <div key={quotation.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div key={quotation._id || quotation.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                           <div className="flex items-center justify-between">
                             <div className="flex-1">
                               <h4 className="text-lg font-medium text-gray-900">
-                                Quotation #{quotation.quotationNumber || quotation.id}
+                                Quotation #{quotation.quotationNumber || quotation._id || quotation.id}
                               </h4>
                               <p className="text-sm text-gray-600 mt-1">
-                                Inquiry: {quotation.inquiry?.inquiryNumber || 'N/A'}
+                                Inquiry: {quotation.inquiry?.inquiryNumber || quotation.inquiryId || 'N/A'}
                               </p>
                               <p className="text-sm text-gray-500 mt-1">
                                 Created: {new Date(quotation.createdAt).toLocaleDateString()}
@@ -622,20 +630,37 @@ const Dashboard = () => {
                                   ₹{quotation.totalAmount.toLocaleString()}
                                 </span>
                               )}
+                              {quotation.quotationPdf && (
+                                <button
+                                  onClick={() => {
+                                    console.log('Opening quotation PDF:', quotation.quotationPdf);
+                                    const pdfUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/uploads/quotations/${quotation.quotationPdf}`;
+                                    console.log('PDF URL:', pdfUrl);
+                                    window.open(pdfUrl, '_blank');
+                                  }}
+                                  className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                  title="View Quote PDF"
+                                >
+                                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                  </svg>
+                                  Quote PDF
+                                </button>
+                              )}
                             </div>
                           </div>
                           
                           {quotation.status === 'sent' && (
                             <div className="mt-4 flex space-x-3">
                               <button
-                                onClick={() => navigate(`/payment/${quotation.id}`)}
+                                onClick={() => navigate(`/payment/${quotation._id || quotation.id}`)}
                                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
                               >
                                 <span className="mr-2">💳</span>
                                 Pay Now
                               </button>
                               <Link
-                                to={`/quotation/${quotation.id}`}
+                                to={`/quotation/${quotation._id || quotation.id}`}
                                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                               >
                                 View Details
@@ -716,7 +741,7 @@ const Dashboard = () => {
                           
                           <div className="mt-4 flex space-x-3">
                             <Link
-                              to={`/inquiry/${inquiry.id}`}
+                              to={`/inquiry/${inquiry._id || inquiry.id}`}
                               className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               View Details
@@ -801,14 +826,14 @@ const Dashboard = () => {
                           
                           <div className="mt-4 flex space-x-3">
                             <Link
-                              to={`/order/${order.id}`}
+                              to={`/order/${order._id || order.id}`}
                               className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                               View Details
                             </Link>
                             {order.status === 'shipped' && (
                               <Link
-                                to={`/order/${order.id}/tracking`}
+                                to={`/order/${order._id || order.id}/tracking`}
                                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
                               >
                                 Track Order
